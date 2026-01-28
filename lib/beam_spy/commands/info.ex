@@ -56,17 +56,17 @@ defmodule BeamSpy.Commands.Info do
     * `:format` - Output format: `:text` (default), `:json`
 
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
     theme = Keyword.get(opts, :theme, Theme.default())
 
     case extract(path, opts) do
       {:ok, info} ->
-        format_output(info, format, theme)
+        {:ok, format_output(info, format, theme)}
 
       {:error, reason} ->
-        format_error(reason)
+        {:error, Format.format_beam_error(reason)}
     end
   end
 
@@ -135,7 +135,7 @@ defmodule BeamSpy.Commands.Info do
 
   defp format_output(info, :text, theme) do
     pairs = [
-      {"Module", format_module_name(info.module), "module"},
+      {"Module", Atom.to_string(info.module), "module"},
       {"File", info.file || "-", "string"},
       {"Compile time", info.compile_time || "-", "ui.value"},
       {"OTP version", info.otp_version || "-", "ui.value"},
@@ -159,7 +159,7 @@ defmodule BeamSpy.Commands.Info do
 
   defp format_output(info, :json, _theme) do
     %{
-      module: format_module_name(info.module),
+      module: Atom.to_string(info.module),
       file: info.file,
       compile_time: info.compile_time,
       otp_version: info.otp_version,
@@ -174,25 +174,9 @@ defmodule BeamSpy.Commands.Info do
     |> Format.json()
   end
 
-  defp format_module_name(mod) when is_atom(mod) do
-    Atom.to_string(mod)
-  end
-
   defp format_size(nil), do: "-"
 
   defp format_size(bytes) when is_integer(bytes) do
     Format.format_value(bytes) <> " bytes"
-  end
-
-  defp format_error(:not_a_beam_file) do
-    "Error: Not a valid BEAM file"
-  end
-
-  defp format_error({:file_error, reason}) do
-    "Error: #{:file.format_error(reason)}"
-  end
-
-  defp format_error(reason) do
-    "Error: #{inspect(reason)}"
   end
 end

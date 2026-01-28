@@ -13,13 +13,13 @@ defmodule BeamSpy.Commands.Atoms do
 
   ## Options
 
-    * `:filter` - Filter atoms by pattern (substring match)
+    * `:filter` - Filter atoms by pattern (supports re:, glob:, or substring)
 
   """
   @spec extract(String.t(), keyword()) :: {:ok, [atom()]} | {:error, term()}
   def extract(path, opts \\ []) do
     with {:ok, atoms} <- BeamFile.read_atoms(path) do
-      atoms = maybe_filter(atoms, opts[:filter])
+      atoms = Filter.maybe_apply(atoms, opts[:filter])
       {:ok, atoms}
     end
   end
@@ -33,25 +33,18 @@ defmodule BeamSpy.Commands.Atoms do
     * `:filter` - Filter atoms by pattern
 
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
     theme = Keyword.get(opts, :theme, Theme.default())
 
     case extract(path, opts) do
       {:ok, atoms} ->
-        format_output(atoms, format, theme)
+        {:ok, format_output(atoms, format, theme)}
 
       {:error, reason} ->
-        format_error(reason)
+        {:error, Format.format_beam_error(reason)}
     end
-  end
-
-  defp maybe_filter(atoms, nil), do: atoms
-
-  defp maybe_filter(atoms, pattern) when is_binary(pattern) do
-    filter = Filter.substring(pattern)
-    Filter.filter_list(filter, atoms)
   end
 
   defp format_output(atoms, :text, theme) do
@@ -77,17 +70,5 @@ defmodule BeamSpy.Commands.Atoms do
   defp special_atom?(atom) do
     str = Atom.to_string(atom)
     String.starts_with?(str, "Elixir.")
-  end
-
-  defp format_error(:not_a_beam_file) do
-    "Error: Not a valid BEAM file"
-  end
-
-  defp format_error({:file_error, reason}) do
-    "Error: #{:file.format_error(reason)}"
-  end
-
-  defp format_error(reason) do
-    "Error: #{inspect(reason)}"
   end
 end

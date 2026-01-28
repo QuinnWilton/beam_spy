@@ -2,12 +2,13 @@ defmodule BeamSpy.Commands.Disasm do
   @moduledoc """
   Disassemble BEAM bytecode into readable assembly.
 
-  Uses `:beam_disasm.file/1` to extract bytecode and formats it
+  Uses `BeamFile.disassemble/1` to extract bytecode and formats it
   with opcode categories for theming.
   """
 
-  alias BeamSpy.Opcodes
+  alias BeamSpy.BeamFile
   alias BeamSpy.Format
+  alias BeamSpy.Opcodes
   alias BeamSpy.Source
   alias BeamSpy.Theme
 
@@ -27,8 +28,8 @@ defmodule BeamSpy.Commands.Disasm do
   """
   @spec extract(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def extract(path, opts \\ []) do
-    case :beam_disasm.file(to_charlist(path)) do
-      {:beam_file, module, exports, _attr, _compile_info, functions} ->
+    case BeamFile.disassemble(path) do
+      {:ok, %{module: module, exports: exports, functions: functions}} ->
         funcs = Enum.map(functions, &parse_function/1)
 
         funcs =
@@ -44,24 +45,24 @@ defmodule BeamSpy.Commands.Disasm do
            functions: funcs
          }}
 
-      {:error, _beam_lib, reason} ->
-        {:error, reason}
+      {:error, _reason} = error ->
+        error
     end
   end
 
   @doc """
   Run disassembly and format output.
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     case extract(path, opts) do
       {:ok, result} ->
         # Add path to opts for source loading
         opts = Keyword.put(opts, :path, path)
-        format_output(result, opts)
+        {:ok, format_output(result, opts)}
 
       {:error, reason} ->
-        "Error: #{inspect(reason)}"
+        {:error, Format.format_beam_error(reason)}
     end
   end
 

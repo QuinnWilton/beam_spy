@@ -10,7 +10,7 @@ defmodule BeamSpy.Commands.Exports do
 
   ## Options
 
-    * `:filter` - Filter exports by function name
+    * `:filter` - Filter exports by function name (supports re:, glob:, or substring)
 
   Returns a list of `{name, arity}` tuples.
   """
@@ -26,7 +26,7 @@ defmodule BeamSpy.Commands.Exports do
         end)
         |> Enum.sort_by(fn {name, arity} -> {Atom.to_string(name), arity} end)
 
-      exports = maybe_filter(exports, opts[:filter])
+      exports = Filter.maybe_apply_with_key(exports, opts[:filter], fn {name, _arity} -> name end)
       {:ok, exports}
     end
   end
@@ -41,7 +41,7 @@ defmodule BeamSpy.Commands.Exports do
     * `:filter` - Filter exports by name
 
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
     plain = Keyword.get(opts, :plain, false)
@@ -49,21 +49,11 @@ defmodule BeamSpy.Commands.Exports do
 
     case extract(path, opts) do
       {:ok, exports} ->
-        format_output(exports, format, plain, theme)
+        {:ok, format_output(exports, format, plain, theme)}
 
       {:error, reason} ->
-        format_error(reason)
+        {:error, Format.format_beam_error(reason)}
     end
-  end
-
-  defp maybe_filter(exports, nil), do: exports
-
-  defp maybe_filter(exports, pattern) when is_binary(pattern) do
-    filter = Filter.substring(pattern)
-
-    Enum.filter(exports, fn {name, _arity} ->
-      Filter.matches?(filter, name)
-    end)
   end
 
   defp format_output(exports, :text, true, theme) do
@@ -93,17 +83,5 @@ defmodule BeamSpy.Commands.Exports do
     exports
     |> Enum.map(fn {name, arity} -> %{name: Atom.to_string(name), arity: arity} end)
     |> Format.json()
-  end
-
-  defp format_error(:not_a_beam_file) do
-    "Error: Not a valid BEAM file"
-  end
-
-  defp format_error({:file_error, reason}) do
-    "Error: #{:file.format_error(reason)}"
-  end
-
-  defp format_error(reason) do
-    "Error: #{inspect(reason)}"
   end
 end

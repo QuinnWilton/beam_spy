@@ -6,6 +6,7 @@ defmodule BeamSpy.Commands.Callgraph do
   and builds a graph of call relationships.
   """
 
+  alias BeamSpy.BeamFile
   alias BeamSpy.Format
   alias BeamSpy.Theme
 
@@ -19,27 +20,27 @@ defmodule BeamSpy.Commands.Callgraph do
   """
   @spec extract(String.t(), keyword()) :: {:ok, graph()} | {:error, term()}
   def extract(path, _opts \\ []) do
-    case :beam_disasm.file(to_charlist(path)) do
-      {:beam_file, module, _exports, _attr, _compile_info, functions} ->
+    case BeamFile.disassemble(path) do
+      {:ok, %{module: module, functions: functions}} ->
         graph = build_graph(module, functions)
         {:ok, graph}
 
-      {:error, _beam_lib, reason} ->
-        {:error, reason}
+      {:error, _reason} = error ->
+        error
     end
   end
 
   @doc """
   Run callgraph extraction and format output.
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     case extract(path, opts) do
       {:ok, graph} ->
-        format_output(graph, opts)
+        {:ok, format_output(graph, opts)}
 
       {:error, reason} ->
-        "Error: #{inspect(reason)}"
+        {:error, Format.format_beam_error(reason)}
     end
   end
 

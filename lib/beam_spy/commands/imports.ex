@@ -10,7 +10,7 @@ defmodule BeamSpy.Commands.Imports do
 
   ## Options
 
-    * `:filter` - Filter imports by function name
+    * `:filter` - Filter imports by function name (supports re:, glob:, or substring)
 
   Returns a list of `{module, name, arity}` tuples.
   """
@@ -24,7 +24,9 @@ defmodule BeamSpy.Commands.Imports do
           {Atom.to_string(mod), Atom.to_string(name), arity}
         end)
 
-      imports = maybe_filter(imports, opts[:filter])
+      imports =
+        Filter.maybe_apply_with_key(imports, opts[:filter], fn {_mod, name, _arity} -> name end)
+
       {:ok, imports}
     end
   end
@@ -39,7 +41,7 @@ defmodule BeamSpy.Commands.Imports do
     * `:filter` - Filter imports by name
 
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
     group = Keyword.get(opts, :group, false)
@@ -47,21 +49,11 @@ defmodule BeamSpy.Commands.Imports do
 
     case extract(path, opts) do
       {:ok, imports} ->
-        format_output(imports, format, group, theme)
+        {:ok, format_output(imports, format, group, theme)}
 
       {:error, reason} ->
-        format_error(reason)
+        {:error, Format.format_beam_error(reason)}
     end
-  end
-
-  defp maybe_filter(imports, nil), do: imports
-
-  defp maybe_filter(imports, pattern) when is_binary(pattern) do
-    filter = Filter.substring(pattern)
-
-    Enum.filter(imports, fn {_mod, name, _arity} ->
-      Filter.matches?(filter, name)
-    end)
   end
 
   defp format_output(imports, :text, true, theme) do
@@ -69,7 +61,7 @@ defmodule BeamSpy.Commands.Imports do
     |> Enum.group_by(fn {mod, _, _} -> mod end)
     |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
     |> Enum.map(fn {mod, funs} ->
-      header = Theme.styled_string(format_module_name(mod), "module", theme)
+      header = Theme.styled_string(Format.format_module_name(mod), "module", theme)
 
       funcs =
         funs
@@ -88,7 +80,7 @@ defmodule BeamSpy.Commands.Imports do
   defp format_output(imports, :text, false, theme) do
     rows =
       Enum.map(imports, fn {mod, name, arity} ->
-        styled_mod = Theme.styled_string(format_module_name(mod), "module", theme)
+        styled_mod = Theme.styled_string(Format.format_module_name(mod), "module", theme)
         styled_name = Theme.styled_string(Atom.to_string(name), "function", theme)
         styled_arity = Theme.styled_string(Integer.to_string(arity), "arity", theme)
         [styled_mod, styled_name, styled_arity]
@@ -104,33 +96,11 @@ defmodule BeamSpy.Commands.Imports do
     imports
     |> Enum.map(fn {mod, name, arity} ->
       %{
-        module: format_module_name(mod),
+        module: Format.format_module_name(mod),
         name: Atom.to_string(name),
         arity: arity
       }
     end)
     |> Format.json()
-  end
-
-  defp format_module_name(mod) when is_atom(mod) do
-    mod_str = Atom.to_string(mod)
-
-    # Remove Elixir. prefix for display
-    case mod_str do
-      "Elixir." <> rest -> rest
-      other -> other
-    end
-  end
-
-  defp format_error(:not_a_beam_file) do
-    "Error: Not a valid BEAM file"
-  end
-
-  defp format_error({:file_error, reason}) do
-    "Error: #{:file.format_error(reason)}"
-  end
-
-  defp format_error(reason) do
-    "Error: #{inspect(reason)}"
   end
 end

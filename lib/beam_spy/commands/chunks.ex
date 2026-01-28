@@ -35,7 +35,7 @@ defmodule BeamSpy.Commands.Chunks do
     * `:raw` - Chunk ID to dump as hex
 
   """
-  @spec run(String.t(), keyword()) :: String.t()
+  @spec run(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def run(path, opts \\ []) do
     case opts[:raw] do
       nil ->
@@ -52,10 +52,10 @@ defmodule BeamSpy.Commands.Chunks do
 
     case extract(path, opts) do
       {:ok, data} ->
-        format_output(data, format, theme)
+        {:ok, format_output(data, format, theme)}
 
       {:error, reason} ->
-        format_error(reason)
+        {:error, Format.format_beam_error(reason)}
     end
   end
 
@@ -67,13 +67,10 @@ defmodule BeamSpy.Commands.Chunks do
         styled_id = Theme.styled_string(chunk_id, "chunk_id", theme)
         styled_size = Theme.styled_string("#{byte_size(data)}", "number", theme)
         header = "Chunk: #{styled_id} (#{styled_size} bytes)\n"
-        header <> Format.hex_dump(data)
-
-      {:error, {:missing_chunk, _}} ->
-        "Error: Chunk '#{chunk_id}' not found"
+        {:ok, header <> Format.hex_dump(data)}
 
       {:error, reason} ->
-        format_error(reason)
+        {:error, Format.format_beam_error(reason)}
     end
   end
 
@@ -114,17 +111,5 @@ defmodule BeamSpy.Commands.Chunks do
 
   defp format_size(size) when is_integer(size) do
     Format.format_value(size)
-  end
-
-  defp format_error(:not_a_beam_file) do
-    "Error: Not a valid BEAM file"
-  end
-
-  defp format_error({:file_error, reason}) do
-    "Error: #{:file.format_error(reason)}"
-  end
-
-  defp format_error(reason) do
-    "Error: #{inspect(reason)}"
   end
 end
