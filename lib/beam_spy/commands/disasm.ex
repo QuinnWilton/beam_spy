@@ -337,7 +337,8 @@ defmodule BeamSpy.Commands.Disasm do
           inst_text =
             instructions
             |> Enum.map(fn inst ->
-              "#{padding}#{border}    " <> String.trim_leading(format_instruction_text(inst, theme))
+              "#{padding}#{border}    " <>
+                String.trim_leading(format_instruction_text(inst, theme))
             end)
             |> Enum.join("\n")
 

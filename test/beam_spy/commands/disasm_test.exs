@@ -205,7 +205,20 @@ defmodule BeamSpy.Commands.DisasmTest do
         |> Enum.sort()
 
       # Verify all categories are valid
-      valid_categories = [:call, :control, :data, :error, :return, :stack, :meta, :message, :binary, :float, :exception, :unknown]
+      valid_categories = [
+        :call,
+        :control,
+        :data,
+        :error,
+        :return,
+        :stack,
+        :meta,
+        :message,
+        :binary,
+        :float,
+        :exception,
+        :unknown
+      ]
 
       for cat <- categories do
         assert cat in valid_categories, "Invalid category: #{inspect(cat)}"

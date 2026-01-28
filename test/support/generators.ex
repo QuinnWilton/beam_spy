@@ -52,7 +52,19 @@ defmodule BeamSpy.Test.Generators do
   Generator for opcode categories.
   """
   def opcode_category do
-    member_of([:call, :control, :data, :stack, :return, :exception, :error, :message, :binary, :meta, :unknown])
+    member_of([
+      :call,
+      :control,
+      :data,
+      :stack,
+      :return,
+      :exception,
+      :error,
+      :message,
+      :binary,
+      :meta,
+      :unknown
+    ])
   end
 
   @doc """
@@ -233,9 +245,22 @@ defmodule BeamSpy.Test.Generators do
   defp stdlib_modules do
     [
       # Elixir modules
-      Enum, List, Map, String, Keyword, Tuple, IO, File, Path,
+      Enum,
+      List,
+      Map,
+      String,
+      Keyword,
+      Tuple,
+      IO,
+      File,
+      Path,
       # Erlang modules
-      :lists, :maps, :ets, :gen_server, :supervisor, :erlang
+      :lists,
+      :maps,
+      :ets,
+      :gen_server,
+      :supervisor,
+      :erlang
     ]
   end
 end

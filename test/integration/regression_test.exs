@@ -163,7 +163,9 @@ defmodule BeamSpy.Integration.RegressionTest do
 
       # Should have call instruction for recursion
       instruction_names = Enum.map(instructions, fn {_, name, _} -> name end)
-      assert "call" in instruction_names or "call_only" in instruction_names or "call_last" in instruction_names
+
+      assert "call" in instruction_names or "call_only" in instruction_names or
+               "call_last" in instruction_names
     end
 
     test "long_function.beam handles many clauses" do
