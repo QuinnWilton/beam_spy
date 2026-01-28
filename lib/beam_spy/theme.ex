@@ -221,6 +221,8 @@ defmodule BeamSpy.Theme do
       colors: %{
         "ui.header" => :white,
         "ui.border" => :bright_black,
+        "ui.dim" => :bright_black,
+        "ui.source" => :white,
         "ui.key" => :cyan,
         "ui.value" => :default,
         "atom" => :cyan,

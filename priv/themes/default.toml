@@ -12,6 +12,7 @@ variant = "dark"
 "ui.value" = "default"
 "ui.arrow" = "bright_black"
 "ui.dim" = "bright_black"
+"ui.source" = { fg = "white", style = "italic" }
 
 # Data types (multiple commands)
 "atom" = "cyan"
