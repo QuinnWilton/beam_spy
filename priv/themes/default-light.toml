@@ -1,0 +1,40 @@
+name = "Default Light"
+author = "beam_spy"
+variant = "light"
+
+[colors]
+# UI elements
+"ui.header" = { fg = "black", style = "bold" }
+"ui.border" = "bright_black"
+"ui.key" = "blue"
+"ui.value" = "default"
+"ui.arrow" = "bright_black"
+"ui.dim" = "bright_black"
+
+# Data types
+"atom" = "cyan"
+"atom.special" = { fg = "cyan", style = "bold" }
+"module" = "yellow"
+"function" = "green"
+"arity" = "bright_black"
+"number" = "magenta"
+"string" = "green"
+"chunk_id" = { fg = "blue", style = "bold" }
+
+# Opcodes
+"opcode.call" = "green"
+"opcode.control" = "magenta"
+"opcode.data" = "default"
+"opcode.stack" = "default"
+"opcode.return" = "red"
+"opcode.exception" = "cyan"
+"opcode.error" = "red"
+"opcode.message" = "blue"
+"opcode.binary" = "green"
+"opcode.meta" = "bright_black"
+
+# Registers
+"register.x" = "yellow"
+"register.y" = "bright_yellow"
+"register.fr" = "cyan"
+"label" = "yellow"

@@ -1,0 +1,37 @@
+name = "Plain"
+author = "beam_spy"
+variant = "both"
+
+# No colors - all elements use default terminal colors
+[colors]
+"ui.header" = "default"
+"ui.border" = "default"
+"ui.key" = "default"
+"ui.value" = "default"
+"ui.arrow" = "default"
+"ui.dim" = "default"
+
+"atom" = "default"
+"atom.special" = "default"
+"module" = "default"
+"function" = "default"
+"arity" = "default"
+"number" = "default"
+"string" = "default"
+"chunk_id" = "default"
+
+"opcode.call" = "default"
+"opcode.control" = "default"
+"opcode.data" = "default"
+"opcode.stack" = "default"
+"opcode.return" = "default"
+"opcode.exception" = "default"
+"opcode.error" = "default"
+"opcode.message" = "default"
+"opcode.binary" = "default"
+"opcode.meta" = "default"
+
+"register.x" = "default"
+"register.y" = "default"
+"register.fr" = "default"
+"label" = "default"

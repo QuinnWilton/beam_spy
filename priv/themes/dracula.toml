@@ -1,0 +1,40 @@
+name = "Dracula"
+author = "beam_spy"
+variant = "dark"
+
+[colors]
+# UI elements
+"ui.header" = { fg = "white", style = "bold" }
+"ui.border" = "bright_black"
+"ui.key" = "magenta"
+"ui.value" = "default"
+"ui.arrow" = "bright_black"
+"ui.dim" = "bright_black"
+
+# Data types
+"atom" = "cyan"
+"atom.special" = { fg = "magenta", style = "bold" }
+"module" = "yellow"
+"function" = "green"
+"arity" = "bright_black"
+"number" = "magenta"
+"string" = "yellow"
+"chunk_id" = { fg = "magenta", style = "bold" }
+
+# Opcodes
+"opcode.call" = "green"
+"opcode.control" = "magenta"
+"opcode.data" = "cyan"
+"opcode.stack" = "cyan"
+"opcode.return" = "red"
+"opcode.exception" = "yellow"
+"opcode.error" = "red"
+"opcode.message" = "magenta"
+"opcode.binary" = "green"
+"opcode.meta" = "bright_black"
+
+# Registers
+"register.x" = "yellow"
+"register.y" = "bright_yellow"
+"register.fr" = "cyan"
+"label" = "magenta"
