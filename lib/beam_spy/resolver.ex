@@ -31,7 +31,7 @@ defmodule BeamSpy.Resolver do
 
   """
 
-  @type resolve_error :: :not_found | :invalid_path
+  @type resolve_error :: :not_found
 
   @doc """
   Resolve an input to a .beam file path.
@@ -62,7 +62,6 @@ defmodule BeamSpy.Resolver do
     case resolve(input, opts) do
       {:ok, path} -> path
       {:error, :not_found} -> raise "Could not find beam file for: #{input}"
-      {:error, :invalid_path} -> raise "Invalid path: #{input}"
     end
   end
 

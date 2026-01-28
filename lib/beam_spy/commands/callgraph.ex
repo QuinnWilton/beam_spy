@@ -69,15 +69,11 @@ defmodule BeamSpy.Commands.Callgraph do
   end
 
   # Extract call edges from a function's instructions
-  defp extract_calls(caller, module, instructions) do
+  defp extract_calls(caller, _module, instructions) do
     Enum.reduce(instructions, {[], MapSet.new()}, fn inst, {edges, ext} ->
       case extract_call_target(inst) do
         nil ->
           {edges, ext}
-
-        {:local, name, arity} ->
-          callee = format_mfa(module, name, arity)
-          {[{caller, callee} | edges], ext}
 
         {:external, mod, name, arity} ->
           callee = format_mfa(mod, name, arity)
