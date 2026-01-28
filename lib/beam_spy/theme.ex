@@ -121,10 +121,15 @@ defmodule BeamSpy.Theme do
 
   defp list_themes(dir) do
     if File.dir?(dir) do
-      dir
-      |> File.ls!()
-      |> Enum.filter(&String.ends_with?(&1, ".toml"))
-      |> Enum.map(&String.trim_trailing(&1, ".toml"))
+      case File.ls(dir) do
+        {:ok, files} ->
+          files
+          |> Enum.filter(&String.ends_with?(&1, ".toml"))
+          |> Enum.map(&String.trim_trailing(&1, ".toml"))
+
+        {:error, _reason} ->
+          []
+      end
     else
       []
     end
