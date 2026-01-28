@@ -146,6 +146,77 @@ defmodule BeamSpy.ResolverTest do
     end
   end
 
+  # Decision table tests from plan document
+  # Maps to: Input | Condition | Action | Expected Result
+  describe "decision table: resolution priority" do
+    setup do
+      tmp_dir = System.tmp_dir!()
+      project_root = Path.join(tmp_dir, "test_project_#{:erlang.unique_integer([:positive])}")
+      File.mkdir_p!(project_root)
+
+      on_exit(fn -> File.rm_rf!(project_root) end)
+      {:ok, project_root: project_root}
+    end
+
+    # | ./foo.beam | File exists | Return path | {:ok, "./foo.beam"} |
+    test "direct path + file exists = return path", %{project_root: root} do
+      beam = Path.join(root, "foo.beam")
+      File.write!(beam, "fake beam")
+
+      {:ok, resolved} = Resolver.resolve(beam)
+      assert resolved == Path.expand(beam)
+    end
+
+    # | ./foo.beam | File missing | Error | {:error, :not_found} |
+    test "direct path + file missing = error", %{project_root: root} do
+      beam = Path.join(root, "nonexistent.beam")
+      assert {:error, :not_found} = Resolver.resolve(beam)
+    end
+
+    # | Foo | In custom path | Search custom path | {:ok, ".../Elixir.Foo.beam"} |
+    test "module name + in custom path = find in custom path", %{project_root: root} do
+      ebin = Path.join(root, "ebin")
+      File.mkdir_p!(ebin)
+      beam = Path.join(ebin, "Elixir.Foo.beam")
+      File.write!(beam, "fake beam")
+
+      {:ok, resolved} = Resolver.resolve("Foo", path: ebin)
+      assert resolved == beam
+    end
+
+    # | Foo | In code path | Search code path | {:ok, ".../Elixir.Foo.beam"} |
+    test "module name + in code path = find in code path" do
+      # Enum is in the code path
+      {:ok, path} = Resolver.resolve("Enum")
+      assert path =~ "Elixir.Enum.beam"
+      assert File.exists?(path)
+    end
+
+    # | Foo | Nowhere | Error | {:error, :not_found} |
+    test "module name + nowhere = error" do
+      assert {:error, :not_found} = Resolver.resolve("NonExistentModuleXYZ123")
+    end
+
+    # | lists | Erlang module | Search code path | {:ok, ".../lists.beam"} |
+    test "erlang module name + in code path = find in code path" do
+      {:ok, path} = Resolver.resolve("lists")
+      assert path =~ "lists.beam"
+      assert File.exists?(path)
+    end
+
+    # Additional decision: module.beam suffix treated as file path
+    test "name with .beam suffix = treated as file path" do
+      # Even if "lists.beam" exists in code path, treating it as a file path
+      # means we look for it in current directory first
+      assert {:error, :not_found} = Resolver.resolve("lists.beam")
+    end
+
+    # Additional decision: name with / treated as file path
+    test "name with slash = treated as file path" do
+      assert {:error, :not_found} = Resolver.resolve("./lists")
+    end
+  end
+
   # Property tests
   describe "property tests" do
     property "resolution is deterministic" do
