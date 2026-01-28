@@ -8,6 +8,7 @@ defmodule BeamSpy.Commands.Disasm do
 
   alias BeamSpy.Opcodes
   alias BeamSpy.Format
+  alias BeamSpy.Source
 
   @type function_info :: %{
           name: atom(),
@@ -54,6 +55,8 @@ defmodule BeamSpy.Commands.Disasm do
   def run(path, opts \\ []) do
     case extract(path, opts) do
       {:ok, result} ->
+        # Add path to opts for source loading
+        opts = Keyword.put(opts, :path, path)
         format_output(result, opts)
 
       {:error, reason} ->
@@ -65,12 +68,35 @@ defmodule BeamSpy.Commands.Disasm do
   defp parse_function({:function, name, arity, entry, instructions}) do
     parsed_instructions = Enum.map(instructions, &parse_instruction/1)
 
+    # Extract line numbers for source correlation
+    line_mapping = extract_line_mapping(instructions)
+
     %{
       name: name,
       arity: arity,
       entry: entry,
-      instructions: parsed_instructions
+      instructions: parsed_instructions,
+      raw_instructions: instructions,
+      line_mapping: line_mapping
     }
+  end
+
+  # Extract a mapping of instruction index to line number
+  defp extract_line_mapping(instructions) do
+    {mapping, _current_line, _idx} =
+      Enum.reduce(instructions, {%{}, nil, 0}, fn
+        {:line, n}, {map, _line, idx} ->
+          {Map.put(map, idx, n), n, idx + 1}
+
+        _inst, {map, line, idx} ->
+          if line do
+            {Map.put(map, idx, line), line, idx + 1}
+          else
+            {map, line, idx + 1}
+          end
+      end)
+
+    mapping
   end
 
   # Parse a single instruction into {category, name, args}
@@ -205,7 +231,9 @@ defmodule BeamSpy.Commands.Disasm do
   defp format_export({name, arity}), do: "#{name}/#{arity}"
   defp format_export({name, arity, _label}), do: "#{name}/#{arity}"
 
-  defp format_text(result, _opts) do
+  defp format_text(result, opts) do
+    source_lines = load_source_if_requested(result, opts)
+
     header = """
     module: #{inspect(result.module)}
     exports: [#{Enum.map_join(result.exports, ", ", &format_export/1)}]
@@ -213,13 +241,28 @@ defmodule BeamSpy.Commands.Disasm do
 
     functions =
       result.functions
-      |> Enum.map(&format_function_text/1)
+      |> Enum.map(&format_function_text(&1, source_lines))
       |> Enum.join("\n")
 
     header <> "\n" <> functions
   end
 
-  defp format_function_text(func) do
+  defp load_source_if_requested(_result, opts) do
+    case Keyword.get(opts, :source) do
+      true ->
+        path = Keyword.get(opts, :path)
+
+        case Source.load_source(path) do
+          {:ok, lines} -> lines
+          _ -> %{}
+        end
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp format_function_text(func, source_lines) do
     header = """
 
     function #{func.name}/#{func.arity} (entry: #{func.entry})
@@ -227,11 +270,53 @@ defmodule BeamSpy.Commands.Disasm do
     """
 
     instructions =
-      func.instructions
-      |> Enum.map(&format_instruction_text/1)
-      |> Enum.join("\n")
+      if map_size(source_lines) > 0 do
+        format_instructions_with_source(func, source_lines)
+      else
+        func.instructions
+        |> Enum.map(&format_instruction_text/1)
+        |> Enum.join("\n")
+      end
 
     header <> instructions
+  end
+
+  defp format_instructions_with_source(func, source_lines) do
+    # Group instructions by line number
+    grouped = Source.group_by_line(func.raw_instructions)
+
+    grouped
+    |> Enum.map(fn {line_num, insts} ->
+      source_text =
+        case {line_num, Map.get(source_lines, line_num)} do
+          {nil, _} -> nil
+          {_, nil} -> nil
+          {n, text} -> {n, text}
+        end
+
+      parsed_insts = Enum.map(insts, &parse_instruction/1)
+      format_source_group(source_text, parsed_insts)
+    end)
+    |> Enum.join("\n")
+  end
+
+  defp format_source_group(nil, instructions) do
+    instructions
+    |> Enum.map(&format_instruction_text/1)
+    |> Enum.join("\n")
+  end
+
+  defp format_source_group({line_num, source_text}, instructions) do
+    source_header = "#{String.pad_leading(to_string(line_num), 4)} │ #{source_text}"
+    separator = "     ├" <> String.duplicate("─", 50)
+
+    inst_text =
+      instructions
+      |> Enum.map(fn inst -> "     │ " <> String.trim_leading(format_instruction_text(inst)) end)
+      |> Enum.join("\n")
+
+    [source_header, separator, inst_text]
+    |> Enum.join("\n")
   end
 
   defp format_instruction_text({_category, "label", [n]}) do
