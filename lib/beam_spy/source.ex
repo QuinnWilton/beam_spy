@@ -6,6 +6,8 @@ defmodule BeamSpy.Source do
   from the debug info (Dbgi) chunk when available.
   """
 
+  import Bitwise
+
   @doc """
   Load source lines for a module.
 
@@ -25,19 +27,111 @@ defmodule BeamSpy.Source do
   end
 
   @doc """
+  Parse the Line chunk to build a mapping from bytecode line indices
+  to actual source line numbers.
+
+  The bytecode contains `{:line, N}` instructions where N is an index
+  into the Line chunk's table, not an actual line number. This function
+  builds the lookup table to resolve those indices.
+
+  Returns `{:ok, %{index => line_number}}` or `{:error, reason}`.
+  """
+  @spec parse_line_table(String.t()) :: {:ok, map()} | {:error, term()}
+  def parse_line_table(beam_path) do
+    case :beam_lib.chunks(to_charlist(beam_path), [~c"Line"]) do
+      {:ok, {_, [{~c"Line", data}]}} ->
+        parse_line_chunk(data)
+
+      {:error, :beam_lib, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :no_line_chunk}
+    end
+  end
+
+  defp parse_line_chunk(
+         <<_version::32, _flags::32, _instr_count::32, num_lines::32, _num_files::32,
+           rest::binary>>
+       ) do
+    {entries, _remaining} = decode_line_entries(rest, num_lines, [])
+
+    # Build index -> line_number map (0-based indices, matching bytecode LINE instructions)
+    # Each entry is a location value that may encode file index in high bits
+    table =
+      entries
+      |> Enum.with_index(0)
+      |> Map.new(fn {location, idx} ->
+        # Extract line number from location (low 24 bits)
+        line = location &&& 0xFFFFFF
+        {idx, line}
+      end)
+
+    {:ok, table}
+  rescue
+    e -> {:error, {:parse_error, e}}
+  end
+
+  defp decode_line_entries(rest, 0, acc), do: {Enum.reverse(acc), rest}
+
+  defp decode_line_entries(binary, n, acc) do
+    {value, rest} = decode_compact_value(binary)
+    decode_line_entries(rest, n - 1, [value | acc])
+  end
+
+  # Decode a compact-term-encoded value from the Line chunk.
+  # This uses the same encoding as instruction arguments in the Code chunk.
+  defp decode_compact_value(<<byte, rest::binary>>) do
+    if (byte &&& 0x08) == 0 do
+      # Small value: upper 4 bits contain the value
+      {byte >>> 4, rest}
+    else
+      if (byte &&& 0x10) == 0 do
+        # Medium value: 3 bits from first byte + 8 bits from second
+        <<next, rest2::binary>> = rest
+        value = ((byte &&& 0xE0) >>> 5) <<< 8 ||| next
+        {value, rest2}
+      else
+        # Large value: size encoded in upper bits
+        size_bits = (byte &&& 0xE0) >>> 5
+
+        if size_bits < 7 do
+          byte_count = size_bits + 2
+          <<value_bytes::binary-size(byte_count), rest2::binary>> = rest
+          value = :binary.decode_unsigned(value_bytes, :big)
+          {value, rest2}
+        else
+          # Very large: size itself is encoded recursively
+          {size, rest2} = decode_compact_value(rest)
+          byte_count = size + 9
+          <<value_bytes::binary-size(byte_count), rest3::binary>> = rest2
+          value = :binary.decode_unsigned(value_bytes, :big)
+          {value, rest3}
+        end
+      end
+    end
+  end
+
+  @doc """
   Group instructions by their source line numbers.
 
-  Takes a list of instructions (from disassembly) and groups them
-  by the line number from {:line, N} pseudo-instructions.
+  Takes a list of instructions (from disassembly) and an optional line table
+  (from `parse_line_table/1`) to resolve line indices to actual line numbers.
 
-  Returns a list of {line_number, [instructions]} where line_number
+  The `{:line, N}` values in bytecode are indices into the Line chunk, not
+  actual line numbers. Pass the line_table to get correct source correlation.
+
+  Returns a list of `{line_number, [instructions]}` where line_number
   can be nil for instructions before any line marker.
   """
-  @spec group_by_line([tuple()]) :: [{non_neg_integer() | nil, [tuple()]}]
-  def group_by_line(instructions) do
+  @spec group_by_line([tuple()], map()) :: [{non_neg_integer() | nil, [tuple()]}]
+  def group_by_line(instructions, line_table \\ %{}) do
     {groups, current_line, current_insts} =
       Enum.reduce(instructions, {[], nil, []}, fn
-        {:line, n}, {groups, current_line, current_insts} ->
+        {:line, idx}, {groups, current_line, current_insts} ->
+          # Look up the actual line number from the line table
+          actual_line = Map.get(line_table, idx, idx)
+
           # Finish current group (if any) and start a new one
           new_groups =
             if current_insts != [] do
@@ -46,11 +140,12 @@ defmodule BeamSpy.Source do
               groups
             end
 
-          {new_groups, n, []}
+          {new_groups, actual_line, []}
 
         {:meta, "line", [n_str]}, {groups, current_line, current_insts} ->
           # Handle parsed instruction format - same logic
-          n = String.to_integer(n_str)
+          idx = String.to_integer(n_str)
+          actual_line = Map.get(line_table, idx, idx)
 
           new_groups =
             if current_insts != [] do
@@ -59,7 +154,7 @@ defmodule BeamSpy.Source do
               groups
             end
 
-          {new_groups, n, []}
+          {new_groups, actual_line, []}
 
         inst, {groups, current_line, current_insts} ->
           # Add instruction to current group
@@ -170,19 +265,16 @@ defmodule BeamSpy.Source do
   defp reconstruct_elixir_defs(definitions, map) do
     module_name = Map.get(map, :module, :unknown)
 
-    # Build a map of line -> reconstructed text
+    # Build a map of line -> reconstructed text (just function heads, not bodies)
     lines =
       for {{name, _arity}, kind, _meta, clauses} <- definitions,
-          {meta, args, _guards, body} <- clauses do
+          {meta, args, _guards, _body} <- clauses do
         line = Keyword.get(meta, :line, 0)
 
-        # Reconstruct the function head
+        # Just show the function head, not the body
         head = reconstruct_function_head(kind, name, args)
 
-        # Try to reconstruct the body (simplified)
-        body_text = try_macro_to_string(body)
-
-        {line, "#{head}, do: #{body_text}"}
+        {line, head}
       end
 
     # Add module declaration at line 1 if not present
