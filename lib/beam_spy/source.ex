@@ -8,21 +8,30 @@ defmodule BeamSpy.Source do
 
   import Bitwise
 
+  @typedoc "Source type: {:file, path} for real source, :reconstructed for debug info"
+  @type source_type :: {:file, String.t()} | :reconstructed
+
   @doc """
   Load source lines for a module.
 
-  Returns `{:ok, %{line_num => text}}` or `{:error, reason}`.
+  Returns `{:ok, %{line_num => text}, source_type}` or `{:error, reason}`.
+  The source_type is `:file` when loaded from the original source file,
+  or `:reconstructed` when rebuilt from debug info.
 
   Resolution order:
   1. Try original source file (path from CInf chunk)
   2. Fall back to AST reconstruction from Dbgi chunk
   3. Return error if neither available
   """
-  @spec load_source(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec load_source(String.t(), keyword()) :: {:ok, map(), source_type()} | {:error, term()}
   def load_source(beam_path, opts \\ []) do
     case Keyword.get(opts, :source_path) do
       nil -> load_from_beam(beam_path)
-      path -> load_from_file(path)
+      path ->
+        case load_from_file(path) do
+          {:ok, lines} -> {:ok, lines, {:file, path}}
+          error -> error
+        end
     end
   end
 
@@ -189,7 +198,7 @@ defmodule BeamSpy.Source do
   defp load_from_beam(beam_path) do
     with {:ok, source_path} <- get_source_path(beam_path),
          {:ok, lines} <- load_from_file(source_path) do
-      {:ok, lines}
+      {:ok, lines, {:file, source_path}}
     else
       _ -> try_reconstruct_from_dbgi(beam_path)
     end
@@ -230,7 +239,10 @@ defmodule BeamSpy.Source do
   defp try_reconstruct_from_dbgi(beam_path) do
     case :beam_lib.chunks(to_charlist(beam_path), [:debug_info]) do
       {:ok, {_, [{:debug_info, {:debug_info_v1, backend, data}}]}} ->
-        reconstruct_source(backend, data)
+        case reconstruct_source(backend, data) do
+          {:ok, lines} -> {:ok, lines, :reconstructed}
+          error -> error
+        end
 
       {:ok, {_, [{:debug_info, :no_debug_info}]}} ->
         {:error, :no_debug_info}
@@ -254,7 +266,14 @@ defmodule BeamSpy.Source do
   end
 
   # Reconstruct source from Erlang abstract code
+  # Old format: {:raw_abstract_v1, forms}
   defp reconstruct_source(:erl_abstract_code, {:raw_abstract_v1, forms}) do
+    lines = reconstruct_erlang_forms(forms)
+    {:ok, lines}
+  end
+
+  # New format (OTP 24+): {forms, options} where forms is a list of abstract forms
+  defp reconstruct_source(:erl_abstract_code, {forms, _options}) when is_list(forms) do
     lines = reconstruct_erlang_forms(forms)
     {:ok, lines}
   end
@@ -318,7 +337,13 @@ defmodule BeamSpy.Source do
     |> Map.new()
   end
 
-  defp reconstruct_erlang_form({:function, line, name, arity, clauses}) do
+  # Extract line number from Erlang anno (handles both old integer and new {line, col} format)
+  defp extract_line({line, _col}) when is_integer(line), do: line
+  defp extract_line(line) when is_integer(line), do: line
+  defp extract_line(_), do: 0
+
+  defp reconstruct_erlang_form({:function, anno, name, arity, clauses}) do
+    line = extract_line(anno)
     # Build a simple representation
     clause_texts =
       Enum.map(clauses, fn {:clause, _cline, args, _guards, _body} ->
@@ -329,11 +354,13 @@ defmodule BeamSpy.Source do
     [{line, "#{name}/#{arity}: " <> Enum.join(clause_texts, "; ")}]
   end
 
-  defp reconstruct_erlang_form({:attribute, line, :module, name}) do
+  defp reconstruct_erlang_form({:attribute, anno, :module, name}) do
+    line = extract_line(anno)
     [{line, "-module(#{name})."}]
   end
 
-  defp reconstruct_erlang_form({:attribute, line, :export, exports}) do
+  defp reconstruct_erlang_form({:attribute, anno, :export, exports}) do
+    line = extract_line(anno)
     exports_str = Enum.map_join(exports, ", ", fn {n, a} -> "#{n}/#{a}" end)
     [{line, "-export([#{exports_str}])."}]
   end
@@ -344,6 +371,32 @@ defmodule BeamSpy.Source do
   defp erl_pp_form({:var, _, name}), do: to_string(name)
   defp erl_pp_form({:atom, _, name}), do: to_string(name)
   defp erl_pp_form({:integer, _, n}), do: to_string(n)
+  defp erl_pp_form({:float, _, f}), do: to_string(f)
+  defp erl_pp_form({:string, _, s}), do: inspect(to_string(s))
+  defp erl_pp_form({:char, _, c}), do: "$#{<<c::utf8>>}"
   defp erl_pp_form({nil, _}), do: "[]"
+  # Cons cell (list pattern)
+  defp erl_pp_form({:cons, _, head, tail}) do
+    "[#{erl_pp_form(head)} | #{erl_pp_form(tail)}]"
+  end
+  # Tuple pattern
+  defp erl_pp_form({:tuple, _, elements}) do
+    "{#{Enum.map_join(elements, ", ", &erl_pp_form/1)}}"
+  end
+  # Map pattern
+  defp erl_pp_form({:map, _, pairs}) do
+    pairs_str = Enum.map_join(pairs, ", ", fn
+      {:map_field_exact, _, k, v} -> "#{erl_pp_form(k)} := #{erl_pp_form(v)}"
+      {:map_field_assoc, _, k, v} -> "#{erl_pp_form(k)} => #{erl_pp_form(v)}"
+      other -> inspect(other, limit: 10)
+    end)
+    "\#{#{pairs_str}}"
+  end
+  # Binary pattern
+  defp erl_pp_form({:bin, _, _}), do: "<<...>>"
+  # Match pattern
+  defp erl_pp_form({:match, _, left, right}) do
+    "#{erl_pp_form(left)} = #{erl_pp_form(right)}"
+  end
   defp erl_pp_form(other), do: inspect(other, limit: 20)
 end
