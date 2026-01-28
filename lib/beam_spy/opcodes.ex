@@ -31,11 +31,11 @@ defmodule BeamSpy.Opcodes do
   # These lists must include all active (non-deprecated) opcodes from genop.tab.
   # A compile-time check below will fail if any opcodes are missing.
   @call_ops ~w(call call_last call_only call_ext call_ext_last call_ext_only call_fun call_fun2 apply apply_last)a
-  @bif_ops ~w(bif0 bif1 bif2 bif3 gc_bif1 gc_bif2 gc_bif3)a
+  @bif_ops ~w(bif0 bif1 bif2 bif3 gc_bif1 gc_bif2 gc_bif3 bif gc_bif)a
   @stack_ops ~w(allocate allocate_heap deallocate trim test_heap init_yregs)a
   @data_ops ~w(move swap get_list get_hd get_tl get_tuple_element set_tuple_element get_map_elements put_list put_tuple2 put_map_assoc put_map_exact make_fun3 update_record)a
   @control_ops ~w(label jump select_val select_tuple_arity)a
-  @test_ops ~w(is_lt is_ge is_eq is_ne is_eq_exact is_ne_exact is_integer is_float is_number is_atom is_pid is_reference is_port is_nil is_binary is_list is_nonempty_list is_tuple is_function is_function2 is_boolean is_bitstr is_map is_tagged_tuple test_arity has_map_fields)a
+  @test_ops ~w(is_lt is_ge is_eq is_ne is_eq_exact is_ne_exact is_integer is_float is_number is_atom is_pid is_reference is_port is_nil is_binary is_list is_nonempty_list is_tuple is_function is_function2 is_boolean is_bitstr is_map is_tagged_tuple test_arity has_map_fields test)a
   @exception_ops ~w(try try_end try_case try_case_end catch catch_end raise build_stacktrace raw_raise)a
   @error_ops ~w(badmatch if_end case_end badrecord func_info)a
   @message_ops ~w(send remove_message timeout loop_rec loop_rec_end wait wait_timeout recv_marker_bind recv_marker_clear recv_marker_reserve recv_marker_use)a
