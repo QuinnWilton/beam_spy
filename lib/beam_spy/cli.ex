@@ -20,7 +20,9 @@ defmodule BeamSpy.CLI do
   Main entry point for the CLI.
   """
   def main(argv) do
-    case Optimus.parse(optimus(), argv) do
+    opt = optimus()
+
+    case Optimus.parse(opt, argv) do
       {:ok, subcommands, parsed} when is_list(subcommands) ->
         dispatch(subcommands, parsed)
 
@@ -36,9 +38,11 @@ defmodule BeamSpy.CLI do
         1
 
       :help ->
+        IO.puts(Optimus.help(opt))
         0
 
       :version ->
+        IO.puts(BeamSpy.version())
         0
     end
   end
