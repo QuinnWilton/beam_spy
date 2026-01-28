@@ -15,6 +15,9 @@ defmodule BeamSpy.MixProject do
       releases: releases(),
       aliases: aliases(),
 
+      # Test
+      test_ignore_filters: [~r{test/fixtures/}, ~r{test/support/}],
+
       # Hex
       description: "A comprehensive BEAM file analysis tool",
       package: package(),
