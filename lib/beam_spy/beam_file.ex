@@ -206,6 +206,41 @@ defmodule BeamSpy.BeamFile do
   end
 
   @doc """
+  Disassembles a BEAM file into its function definitions.
+
+  Returns a map with:
+  - `:module` - The module name
+  - `:exports` - List of exported functions
+  - `:attributes` - Module attributes
+  - `:compile_info` - Compilation information
+  - `:functions` - List of function tuples from beam_disasm
+
+  """
+  @spec disassemble(String.t()) :: {:ok, map()} | {:error, beam_error()}
+  def disassemble(path) do
+    case :beam_disasm.file(to_charlist(path)) do
+      {:beam_file, module, exports, attributes, compile_info, functions} ->
+        {:ok,
+         %{
+           module: module,
+           exports: exports,
+           attributes: attributes,
+           compile_info: compile_info,
+           functions: functions
+         }}
+
+      {:error, :beam_lib, {:not_a_beam_file, _}} ->
+        {:error, :not_a_beam_file}
+
+      {:error, :beam_lib, {:file_error, _, reason}} ->
+        {:error, {:file_error, reason}}
+
+      {:error, _beam_lib, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Reads a raw chunk by ID, returning the binary data.
   """
   @spec read_raw_chunk(String.t(), chunk_id()) :: {:ok, binary()} | {:error, beam_error()}
