@@ -190,19 +190,7 @@ defmodule BeamSpy.OpcodesTest do
       check all(opcode <- member_of(Opcodes.active())) do
         category = Opcodes.category(opcode.name)
 
-        assert category in [
-                 :call,
-                 :stack,
-                 :data,
-                 :control,
-                 :exception,
-                 :error,
-                 :message,
-                 :binary,
-                 :return,
-                 :meta,
-                 :unknown
-               ]
+        assert category in Opcodes.categories()
       end
     end
   end

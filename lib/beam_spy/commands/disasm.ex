@@ -99,21 +99,11 @@ defmodule BeamSpy.Commands.Disasm do
     mapping
   end
 
-  # Parse a single instruction into {category, name, args}
-  defp parse_instruction({:label, n}) do
-    {:control, "label", [to_string(n)]}
-  end
-
-  defp parse_instruction({:line, n}) do
-    {:meta, "line", [to_string(n)]}
-  end
-
-  defp parse_instruction({:func_info, mod, name, arity}) do
-    {:error, "func_info", [format_arg(mod), format_arg(name), to_string(arity)]}
-  end
-
-  defp parse_instruction(:return) do
-    {:return, "return", []}
+  # Parse a single instruction into {category, name, args}.
+  # Categories are looked up via Opcodes.category/1 which is generated from genop.tab.
+  defp parse_instruction(opcode) when is_atom(opcode) do
+    category = Opcodes.category(opcode)
+    {category, to_string(opcode), []}
   end
 
   defp parse_instruction({opcode}) when is_atom(opcode) do
