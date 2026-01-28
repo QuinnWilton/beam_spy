@@ -1,0 +1,82 @@
+defmodule BeamSpy.MixProject do
+  use Mix.Project
+
+  @version "0.1.0"
+  @source_url "https://github.com/quintusdev/beam_spy"
+
+  def project do
+    [
+      app: :beam_spy,
+      version: @version,
+      elixir: "~> 1.15",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      escript: escript(),
+      aliases: aliases(),
+
+      # Hex
+      description: "A comprehensive BEAM file analysis tool",
+      package: package(),
+      source_url: @source_url,
+
+      # Docs
+      name: "BeamSpy",
+      docs: docs()
+    ]
+  end
+
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
+  defp deps do
+    [
+      # CLI parsing
+      {:optimus, "~> 0.5"},
+
+      # JSON encoding
+      {:jason, "~> 1.4"},
+
+      # TOML parsing for themes
+      {:toml, "~> 0.7"},
+
+      # Table formatting
+      {:table_rex, "~> 4.0"},
+
+      # Dev/Test dependencies
+      {:stream_data, "~> 1.0", only: [:test, :dev]},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false}
+    ]
+  end
+
+  defp escript do
+    [
+      main_module: BeamSpy.CLI,
+      name: "beam_spy"
+    ]
+  end
+
+  defp aliases do
+    [
+      "test.fixtures": ["run test/support/build_fixtures.exs"]
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => @source_url},
+      files: ~w(lib priv mix.exs README.md LICENSE CHANGELOG.md)
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md", "CHANGELOG.md"],
+      source_ref: "v#{@version}"
+    ]
+  end
+end
