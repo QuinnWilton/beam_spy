@@ -153,6 +153,16 @@ defmodule BeamSpy.Commands.Disasm do
     end
   end
 
+  # Format string tuples in bs_create_bin - show actual string content
+  defp format_arg({:string, bin}) when is_binary(bin) do
+    if String.printable?(bin) do
+      truncated = if byte_size(bin) > 30, do: String.slice(bin, 0, 27) <> "...", else: bin
+      "{string, #{inspect(truncated)}}"
+    else
+      "{string, <<#{byte_size(bin)} bytes>>}"
+    end
+  end
+
   # Handle both {:list, items} from beam_disasm and raw Elixir lists
   defp format_arg({:list, items}), do: format_arg_list(items)
   defp format_arg(items) when is_list(items), do: format_arg_list(items)
