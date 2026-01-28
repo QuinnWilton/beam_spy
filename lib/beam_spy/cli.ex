@@ -21,6 +21,7 @@ defmodule BeamSpy.CLI do
   """
   def main(argv) do
     opt = optimus()
+    argv = normalize_help_args(argv)
 
     case Optimus.parse(opt, argv) do
       {:ok, subcommands, parsed} when is_list(subcommands) ->
@@ -40,6 +41,18 @@ defmodule BeamSpy.CLI do
       :help ->
         IO.puts(Optimus.help(opt))
         0
+
+      {:help, [subcommand]} ->
+        # Help for a specific subcommand: beam_spy help disasm
+        case Optimus.fetch_subcommand(opt, [subcommand]) do
+          {subopt, _path} ->
+            IO.puts(Optimus.help(subopt))
+            0
+
+          nil ->
+            IO.puts(:stderr, "Unknown command: #{subcommand}")
+            1
+        end
 
       :version ->
         IO.puts(BeamSpy.version())
@@ -427,4 +440,13 @@ defmodule BeamSpy.CLI do
       true -> nil
     end
   end
+
+  @subcommands ~w(atoms exports imports info chunks disasm callgraph)
+
+  # Normalize help arguments to support both "cmd --help" and "help cmd"
+  defp normalize_help_args([cmd, flag]) when flag in ["--help", "-h"] do
+    if cmd in @subcommands, do: ["help", cmd], else: [cmd, flag]
+  end
+
+  defp normalize_help_args(argv), do: argv
 end
