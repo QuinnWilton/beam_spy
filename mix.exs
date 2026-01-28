@@ -55,6 +55,7 @@ defmodule BeamSpy.MixProject do
 
       # Dev/Test dependencies
       {:stream_data, "~> 1.0", only: [:test, :dev]},
+      {:mneme, "~> 0.10", only: [:test, :dev]},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false}
     ]
   end
