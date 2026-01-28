@@ -10,7 +10,7 @@ defmodule BeamSpy.MixProject do
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      compilers: [:gleam] ++ Mix.compilers(),
+      compilers: compilers(Mix.env()),
       erlc_paths: erlc_paths(Mix.env()),
       deps: deps(),
       escript: escript(),
@@ -111,6 +111,10 @@ defmodule BeamSpy.MixProject do
       source_ref: "v#{@version}"
     ]
   end
+
+  # Only use Gleam compiler in dev/test (mix_gleam is not a prod dependency)
+  defp compilers(:prod), do: Mix.compilers()
+  defp compilers(_env), do: [:gleam | Mix.compilers()]
 
   # Include Gleam-generated Erlang files in dev/test
   defp erlc_paths(:prod), do: []
