@@ -116,9 +116,67 @@ defmodule BeamSpy.Commands.Disasm do
   defp parse_instruction(instruction) when is_tuple(instruction) do
     [opcode | args] = Tuple.to_list(instruction)
     category = Opcodes.category(opcode)
-    formatted_args = Enum.map(args, &format_arg/1)
+    formatted_args = format_instruction_args(opcode, args)
     {category, to_string(opcode), formatted_args}
   end
+
+  # Special formatting for specific instructions
+  defp format_instruction_args(:get_map_elements, [fail, src, {:list, pairs}]) do
+    [format_arg(fail), format_arg(src), format_map_get_pairs(pairs)]
+  end
+
+  defp format_instruction_args(:get_map_elements, [fail, src, pairs]) when is_list(pairs) do
+    [format_arg(fail), format_arg(src), format_map_get_pairs(pairs)]
+  end
+
+  defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, {:list, pairs}]) do
+    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+  end
+
+  defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, pairs]) when is_list(pairs) do
+    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+  end
+
+  defp format_instruction_args(:put_map_exact, [fail, src, dst, live, {:list, pairs}]) do
+    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+  end
+
+  defp format_instruction_args(:put_map_exact, [fail, src, dst, live, pairs]) when is_list(pairs) do
+    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+  end
+
+  defp format_instruction_args(_opcode, args) do
+    Enum.map(args, &format_arg/1)
+  end
+
+  # Format get_map_elements pairs: [key, dest, key, dest, ...] -> [key => dest, ...]
+  defp format_map_get_pairs(pairs) do
+    pairs
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [key, dest] -> "#{format_map_key(key)} => #{format_arg(dest)}"
+      other -> Enum.map_join(other, ", ", &format_arg/1)
+    end)
+    |> then(fn formatted -> "[#{Enum.join(formatted, ", ")}]" end)
+    |> truncate_if_long(80)
+  end
+
+  # Format put_map pairs: [key, val, key, val, ...] -> %{key: val, ...}
+  defp format_map_put_pairs(pairs) do
+    pairs
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [key, val] -> "#{format_map_key(key)}: #{format_arg(val)}"
+      other -> Enum.map_join(other, ", ", &format_arg/1)
+    end)
+    |> then(fn formatted -> "%{#{Enum.join(formatted, ", ")}}" end)
+    |> truncate_if_long(80)
+  end
+
+  # Format map keys - show atoms without leading colon for cleaner syntax
+  defp format_map_key({:atom, a}), do: to_string(a)
+  defp format_map_key({:literal, a}) when is_atom(a), do: to_string(a)
+  defp format_map_key(other), do: format_arg(other)
 
   # Format individual argument values
   defp format_arg({:x, n}), do: "x(#{n})"
