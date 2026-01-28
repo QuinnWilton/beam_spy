@@ -255,4 +255,42 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert output =~ "return"
     end
   end
+
+  describe "run/2 with source option" do
+    # Use Elixir's Enum module which has source available
+    @elixir_beam_path :code.which(Enum) |> to_string()
+
+    test "includes source lines when source: true" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: true)
+
+      # Should include the source line marker (line number followed by │)
+      assert output =~ ~r/\d+\s*│/
+      # Should include actual source code
+      assert output =~ "def reverse"
+    end
+
+    test "still includes instructions with source: true" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: true)
+
+      # Should still have bytecode
+      assert output =~ "label"
+      assert output =~ "func_info"
+    end
+
+    test "output without source option has no source lines" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: false)
+
+      # Should not have the source line format
+      refute output =~ ~r/^\s*\d+\s*│.*def reverse/m
+    end
+
+    test "source option does not affect JSON format" do
+      # JSON format ignores source option (no interleaving)
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :json, function: "reverse/1", source: true)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert decoded["module"] == "Elixir.Enum"
+      assert is_list(decoded["functions"])
+    end
+  end
 end
