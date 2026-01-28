@@ -177,4 +177,69 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert arity == "1"
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract result structure for :lists.reverse/1" do
+      {:ok, result} = Disasm.extract(@test_beam_path, function: "reverse/1")
+
+      assert result.module == :lists
+      assert length(result.functions) == 1
+
+      [func] = result.functions
+      assert func.name == :reverse
+      assert func.arity == 1
+      assert is_integer(func.entry)
+      assert length(func.instructions) > 0
+    end
+
+    @tag :snapshot
+    test "instruction categories are valid atoms" do
+      {:ok, result} = Disasm.extract(@test_beam_path, function: "reverse/1")
+      [func] = result.functions
+
+      categories =
+        func.instructions
+        |> Enum.map(fn {cat, _, _} -> cat end)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      # Verify all categories are valid
+      valid_categories = [:call, :control, :data, :error, :return, :stack, :meta, :message, :binary, :float, :exception, :unknown]
+
+      for cat <- categories do
+        assert cat in valid_categories, "Invalid category: #{inspect(cat)}"
+      end
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
+      {:ok, decoded} = Jason.decode(output)
+
+      assert decoded["module"] == "lists"
+      assert is_list(decoded["exports"])
+      assert is_list(decoded["functions"])
+
+      [func] = decoded["functions"]
+      assert func["name"] == "reverse"
+      assert func["arity"] == 1
+      assert is_list(func["instructions"])
+
+      # First instruction is typically line or label
+      [first | _] = func["instructions"]
+      assert first["op"] in ["label", "line"]
+    end
+
+    @tag :snapshot
+    test "text output contains expected sections" do
+      output = Disasm.run(@test_beam_path, format: :text, function: "reverse/1")
+
+      assert output =~ "module: :lists"
+      assert output =~ "function reverse/1"
+      assert output =~ "label"
+      assert output =~ "func_info"
+      assert output =~ "return"
+    end
+  end
 end
