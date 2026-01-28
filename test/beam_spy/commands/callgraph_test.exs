@@ -51,7 +51,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
 
   describe "run/2 text format" do
     test "outputs function names with calls" do
-      output = Callgraph.run(@test_beam_path, format: :text)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "lists."
       # Arrow for call edges
@@ -59,7 +59,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
     end
 
     test "shows functions with no calls" do
-      output = Callgraph.run(@test_beam_path, format: :text)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :text)
       # Some functions should have "(no calls)"
       assert output =~ "(no calls)" or output =~ "→"
     end
@@ -67,7 +67,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
 
   describe "run/2 json format" do
     test "outputs valid JSON" do
-      output = Callgraph.run(@test_beam_path, format: :json)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert Map.has_key?(decoded, "nodes")
@@ -77,7 +77,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
     end
 
     test "edges have from and to fields" do
-      output = Callgraph.run(@test_beam_path, format: :json)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       for edge <- decoded["edges"] do
@@ -89,7 +89,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
 
   describe "run/2 dot format" do
     test "outputs valid DOT graph" do
-      output = Callgraph.run(@test_beam_path, format: :dot)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :dot)
 
       assert output =~ "digraph callgraph"
       assert output =~ "rankdir=LR"
@@ -98,7 +98,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
     end
 
     test "escapes special characters in DOT" do
-      output = Callgraph.run(@test_beam_path, format: :dot)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :dot)
 
       # Should not have unescaped quotes in node names
       # (other than the wrapping quotes)
@@ -132,7 +132,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
     property "DOT output has valid basic syntax" do
       check all(module <- member_of(@stdlib_modules)) do
         beam_path = Helpers.beam_path(module)
-        dot = Callgraph.run(beam_path, format: :dot)
+        {:ok, dot} = Callgraph.run(beam_path, format: :dot)
 
         # Must start with digraph declaration
         assert dot =~ ~r/^digraph\s+\w+\s*\{/
@@ -153,7 +153,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
     property "JSON output has valid structure" do
       check all(module <- member_of(@stdlib_modules)) do
         beam_path = Helpers.beam_path(module)
-        output = Callgraph.run(beam_path, format: :json)
+        {:ok, output} = Callgraph.run(beam_path, format: :json)
 
         {:ok, decoded} = Jason.decode(output)
         assert is_list(decoded["nodes"])
@@ -172,7 +172,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
         beam_path = Helpers.beam_path(module)
 
         {:ok, graph} = Callgraph.extract(beam_path)
-        json_output = Callgraph.run(beam_path, format: :json)
+        {:ok, json_output} = Callgraph.run(beam_path, format: :json)
         {:ok, json_data} = Jason.decode(json_output)
 
         # Node count should match between extract and JSON output
@@ -198,7 +198,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Callgraph.run(@test_beam_path, format: :json)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert Map.has_key?(decoded, "nodes")
@@ -215,7 +215,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
 
     @tag :snapshot
     test "DOT output structure is stable" do
-      output = Callgraph.run(@test_beam_path, format: :dot)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :dot)
 
       assert output =~ "digraph callgraph"
       assert output =~ "rankdir=LR"
@@ -224,7 +224,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
 
     @tag :snapshot
     test "text output shows function calls" do
-      output = Callgraph.run(@test_beam_path, format: :text)
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :text)
 
       assert is_binary(output)
       assert output =~ "lists."

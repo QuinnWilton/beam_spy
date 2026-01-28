@@ -77,26 +77,26 @@ defmodule BeamSpy.Commands.DisasmTest do
 
   describe "run/2 text format" do
     test "outputs module header" do
-      output = Disasm.run(@test_beam_path, format: :text)
+      {:ok, output} = Disasm.run(@test_beam_path, format: :text)
       assert output =~ "module: :lists"
       assert output =~ "exports:"
     end
 
     test "outputs function headers" do
-      output = Disasm.run(@test_beam_path, format: :text)
+      {:ok, output} = Disasm.run(@test_beam_path, format: :text)
       assert output =~ "function map/2"
       assert output =~ "(entry:"
     end
 
     test "outputs instructions" do
-      output = Disasm.run(@test_beam_path, format: :text, function: "reverse/1")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :text, function: "reverse/1")
       # Should contain common instructions
       assert output =~ "label"
       assert output =~ "func_info"
     end
 
     test "formats registers" do
-      output = Disasm.run(@test_beam_path, format: :text, function: "map/2")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :text, function: "map/2")
       # Should format x registers
       assert output =~ "x(" or output =~ "y("
     end
@@ -104,7 +104,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
   describe "run/2 json format" do
     test "outputs valid JSON" do
-      output = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
       {:ok, decoded} = Jason.decode(output)
 
       assert Map.has_key?(decoded, "module")
@@ -113,7 +113,7 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "function structure in JSON" do
-      output = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
       {:ok, decoded} = Jason.decode(output)
 
       [func] = decoded["functions"]
@@ -124,7 +124,7 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "instruction structure in JSON" do
-      output = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
       {:ok, decoded} = Jason.decode(output)
 
       [func] = decoded["functions"]
@@ -227,7 +227,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :json, function: "reverse/1")
       {:ok, decoded} = Jason.decode(output)
 
       assert decoded["module"] == "lists"
@@ -246,7 +246,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :snapshot
     test "text output contains expected sections" do
-      output = Disasm.run(@test_beam_path, format: :text, function: "reverse/1")
+      {:ok, output} = Disasm.run(@test_beam_path, format: :text, function: "reverse/1")
 
       assert output =~ "module: :lists"
       assert output =~ "function reverse/1"

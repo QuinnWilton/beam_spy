@@ -24,7 +24,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "extracts atoms from #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Atoms.run(path, format: :json)
+        {:ok, result} = Atoms.run(path, format: :json)
 
         assert {:ok, atoms} = Jason.decode(result)
         assert is_list(atoms)
@@ -40,7 +40,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "extracts atoms from #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Atoms.run(path, format: :json)
+        {:ok, result} = Atoms.run(path, format: :json)
 
         assert {:ok, atoms} = Jason.decode(result)
         assert is_list(atoms)
@@ -54,7 +54,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "lists exports from #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Exports.run(path, format: :json)
+        {:ok, result} = Exports.run(path, format: :json)
 
         assert {:ok, exports} = Jason.decode(result)
         assert is_list(exports)
@@ -70,7 +70,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "lists exports from #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Exports.run(path, format: :json)
+        {:ok, result} = Exports.run(path, format: :json)
 
         assert {:ok, exports} = Jason.decode(result)
         assert is_list(exports)
@@ -88,7 +88,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "lists imports from #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Imports.run(path, format: :json)
+        {:ok, result} = Imports.run(path, format: :json)
 
         assert {:ok, imports} = Jason.decode(result)
         assert is_list(imports)
@@ -102,7 +102,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "shows info for #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Info.run(path, format: :json)
+        {:ok, result} = Info.run(path, format: :json)
 
         assert {:ok, info} = Jason.decode(result)
         assert is_map(info)
@@ -116,7 +116,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       @tag target: mod
       test "lists chunks for #{inspect(mod)}" do
         path = Helpers.beam_path(unquote(mod))
-        result = Chunks.run(path, format: :json)
+        {:ok, result} = Chunks.run(path, format: :json)
 
         assert {:ok, data} = Jason.decode(result)
         chunks = data["chunks"]
@@ -173,7 +173,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
     test "disasm text output is valid for Enum.map/2" do
       path = Helpers.beam_path(Enum)
-      output = Disasm.run(path, function: "map/2", format: :text)
+      {:ok, output} = Disasm.run(path, function: "map/2", format: :text)
 
       assert is_binary(output)
       assert output =~ "function map/2"
@@ -182,7 +182,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
     test "disasm JSON output is valid for :lists.reverse/1" do
       path = Helpers.beam_path(:lists)
-      output = Disasm.run(path, function: "reverse/1", format: :json)
+      {:ok, output} = Disasm.run(path, function: "reverse/1", format: :json)
 
       assert {:ok, data} = Jason.decode(output)
       assert is_map(data)
@@ -196,7 +196,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
     @tag :slow
     test "disassembles large module :ets without crashing" do
       path = Helpers.beam_path(:ets)
-      output = Disasm.run(path, format: :text)
+      {:ok, output} = Disasm.run(path, format: :text)
 
       assert is_binary(output)
       # :ets has many functions
@@ -207,7 +207,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
   describe "callgraph command on stdlib" do
     test "builds callgraph for Enum" do
       path = Helpers.beam_path(Enum)
-      output = Callgraph.run(path, format: :json)
+      {:ok, output} = Callgraph.run(path, format: :json)
 
       assert {:ok, graph} = Jason.decode(output)
       assert is_map(graph)
@@ -218,7 +218,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
     test "DOT output is valid syntax for GenServer" do
       path = Helpers.beam_path(GenServer)
-      output = Callgraph.run(path, format: :dot)
+      {:ok, output} = Callgraph.run(path, format: :dot)
 
       assert is_binary(output)
       assert output =~ ~r/^digraph/
@@ -229,7 +229,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
   describe "edge cases in real modules" do
     test "handles :ets with binary matching opcodes" do
       path = Helpers.beam_path(:ets)
-      output = Disasm.run(path, format: :text)
+      {:ok, output} = Disasm.run(path, format: :text)
 
       assert is_binary(output)
       refute output =~ "Error:"

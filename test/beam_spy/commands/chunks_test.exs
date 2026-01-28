@@ -39,20 +39,20 @@ defmodule BeamSpy.Commands.ChunksTest do
 
   describe "run/2 text format" do
     test "renders table with chunks" do
-      output = Chunks.run(@test_beam_path, format: :text)
+      {:ok, output} = Chunks.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "Code"
     end
 
     test "shows total size" do
-      output = Chunks.run(@test_beam_path, format: :text)
+      {:ok, output} = Chunks.run(@test_beam_path, format: :text)
       assert output =~ "Total" or output =~ "total" or String.contains?(output, "bytes")
     end
   end
 
   describe "run/2 json format" do
     test "outputs valid JSON" do
-      output = Chunks.run(@test_beam_path, format: :json)
+      {:ok, output} = Chunks.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert Map.has_key?(decoded, "chunks")
@@ -60,7 +60,7 @@ defmodule BeamSpy.Commands.ChunksTest do
     end
 
     test "chunks have id and size in JSON" do
-      output = Chunks.run(@test_beam_path, format: :json)
+      {:ok, output} = Chunks.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       for chunk <- decoded["chunks"] do
@@ -72,14 +72,14 @@ defmodule BeamSpy.Commands.ChunksTest do
 
   describe "raw dump" do
     test "dumps raw bytes for chunk" do
-      output = Chunks.run(@test_beam_path, raw: "Code")
+      {:ok, output} = Chunks.run(@test_beam_path, raw: "Code")
 
       # Should be hex dump format
       assert output =~ ~r/[0-9a-f]{2}/i
     end
 
     test "returns error for non-existent chunk" do
-      output = Chunks.run(@test_beam_path, raw: "XXXX")
+      {:error, output} = Chunks.run(@test_beam_path, raw: "XXXX")
       assert output =~ "not found" or output =~ "error" or output =~ "Error"
     end
   end
@@ -104,7 +104,7 @@ defmodule BeamSpy.Commands.ChunksTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Chunks.run(@test_beam_path, format: :json)
+      {:ok, output} = Chunks.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert Map.has_key?(decoded, "chunks")
@@ -120,7 +120,7 @@ defmodule BeamSpy.Commands.ChunksTest do
 
     @tag :snapshot
     test "text output shows chunk table" do
-      output = Chunks.run(@test_beam_path, format: :text)
+      {:ok, output} = Chunks.run(@test_beam_path, format: :text)
 
       assert is_binary(output)
       assert output =~ "Code"

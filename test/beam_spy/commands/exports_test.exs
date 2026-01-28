@@ -40,13 +40,13 @@ defmodule BeamSpy.Commands.ExportsTest do
 
   describe "run/2 text format" do
     test "renders table" do
-      output = Exports.run(@test_beam_path, format: :text)
+      {:ok, output} = Exports.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "map"
     end
 
     test "plain format outputs function/arity" do
-      output = Exports.run(@test_beam_path, format: :text, plain: true)
+      {:ok, output} = Exports.run(@test_beam_path, format: :text, plain: true)
       lines = String.split(output, "\n", trim: true)
 
       for line <- lines do
@@ -57,7 +57,7 @@ defmodule BeamSpy.Commands.ExportsTest do
 
   describe "run/2 json format" do
     test "outputs valid JSON" do
-      output = Exports.run(@test_beam_path, format: :json)
+      {:ok, output} = Exports.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
       assert is_list(decoded)
 
@@ -85,7 +85,7 @@ defmodule BeamSpy.Commands.ExportsTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Exports.run(@test_beam_path, format: :json)
+      {:ok, output} = Exports.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert is_list(decoded)
@@ -98,7 +98,7 @@ defmodule BeamSpy.Commands.ExportsTest do
 
     @tag :snapshot
     test "plain text output format is stable" do
-      output = Exports.run(@test_beam_path, format: :text, plain: true)
+      {:ok, output} = Exports.run(@test_beam_path, format: :text, plain: true)
 
       lines = String.split(output, "\n", trim: true)
       assert length(lines) > 20

@@ -32,20 +32,20 @@ defmodule BeamSpy.Commands.AtomsTest do
 
   describe "run/2 text format" do
     test "outputs one atom per line" do
-      output = Atoms.run(@test_beam_path, format: :text)
+      {:ok, output} = Atoms.run(@test_beam_path, format: :text)
       lines = String.split(output, "\n", trim: true)
       assert length(lines) > 0
     end
 
     test "filters atoms" do
-      output = Atoms.run(@test_beam_path, format: :text, filter: "reverse")
+      {:ok, output} = Atoms.run(@test_beam_path, format: :text, filter: "reverse")
       assert output =~ "reverse"
     end
   end
 
   describe "run/2 json format" do
     test "outputs valid JSON array" do
-      output = Atoms.run(@test_beam_path, format: :json)
+      {:ok, output} = Atoms.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
       assert is_list(decoded)
 
@@ -68,7 +68,7 @@ defmodule BeamSpy.Commands.AtomsTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Atoms.run(@test_beam_path, format: :json)
+      {:ok, output} = Atoms.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert is_list(decoded)
@@ -78,7 +78,7 @@ defmodule BeamSpy.Commands.AtomsTest do
 
     @tag :snapshot
     test "text output format is stable" do
-      output = Atoms.run(@test_beam_path, format: :text)
+      {:ok, output} = Atoms.run(@test_beam_path, format: :text)
 
       assert is_binary(output)
       assert output =~ "lists"

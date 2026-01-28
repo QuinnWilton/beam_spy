@@ -17,7 +17,7 @@ defmodule BeamSpy.Integration.RegressionTest do
   describe "atoms command regression" do
     test "simple.beam atoms output is stable" do
       path = Path.join(@fixture_dir, "simple.beam")
-      result = Atoms.run(path, format: :json)
+      {:ok, result} = Atoms.run(path, format: :json)
 
       {:ok, atoms} = Jason.decode(result)
       assert is_list(atoms)
@@ -31,7 +31,7 @@ defmodule BeamSpy.Integration.RegressionTest do
 
     test "complex.beam atoms output is stable" do
       path = Path.join(@fixture_dir, "complex.beam")
-      result = Atoms.run(path, format: :json)
+      {:ok, result} = Atoms.run(path, format: :json)
 
       {:ok, atoms} = Jason.decode(result)
       assert "Elixir.TestComplex" in atoms
@@ -44,7 +44,7 @@ defmodule BeamSpy.Integration.RegressionTest do
   describe "exports command regression" do
     test "simple.beam exports are stable" do
       path = Path.join(@fixture_dir, "simple.beam")
-      result = Exports.run(path, format: :json)
+      {:ok, result} = Exports.run(path, format: :json)
 
       {:ok, exports} = Jason.decode(result)
       names = Enum.map(exports, & &1["name"])
@@ -56,7 +56,7 @@ defmodule BeamSpy.Integration.RegressionTest do
 
     test "recursive.beam exports are stable" do
       path = Path.join(@fixture_dir, "recursive.beam")
-      result = Exports.run(path, format: :json)
+      {:ok, result} = Exports.run(path, format: :json)
 
       {:ok, exports} = Jason.decode(result)
       names = Enum.map(exports, & &1["name"])
@@ -70,7 +70,7 @@ defmodule BeamSpy.Integration.RegressionTest do
   describe "imports command regression" do
     test "with_imports.beam imports are stable" do
       path = Path.join(@fixture_dir, "with_imports.beam")
-      result = Imports.run(path, format: :json)
+      {:ok, result} = Imports.run(path, format: :json)
 
       {:ok, imports} = Jason.decode(result)
       modules = Enum.map(imports, & &1["module"]) |> Enum.uniq()
@@ -81,7 +81,7 @@ defmodule BeamSpy.Integration.RegressionTest do
 
     test "uses_enum.beam imports are stable" do
       path = Path.join(@fixture_dir, "uses_enum.beam")
-      result = Imports.run(path, format: :json)
+      {:ok, result} = Imports.run(path, format: :json)
 
       {:ok, imports} = Jason.decode(result)
       modules = Enum.map(imports, & &1["module"]) |> Enum.uniq()
@@ -94,7 +94,7 @@ defmodule BeamSpy.Integration.RegressionTest do
   describe "info command regression" do
     test "simple.beam info is stable" do
       path = Path.join(@fixture_dir, "simple.beam")
-      result = Info.run(path, format: :json)
+      {:ok, result} = Info.run(path, format: :json)
 
       {:ok, info} = Jason.decode(result)
 
@@ -105,7 +105,7 @@ defmodule BeamSpy.Integration.RegressionTest do
 
     test "genserver.beam info is stable" do
       path = Path.join(@fixture_dir, "genserver.beam")
-      result = Info.run(path, format: :json)
+      {:ok, result} = Info.run(path, format: :json)
 
       {:ok, info} = Jason.decode(result)
 
@@ -118,7 +118,7 @@ defmodule BeamSpy.Integration.RegressionTest do
   describe "chunks command regression" do
     test "simple.beam chunks are stable" do
       path = Path.join(@fixture_dir, "simple.beam")
-      result = Chunks.run(path, format: :json)
+      {:ok, result} = Chunks.run(path, format: :json)
 
       {:ok, data} = Jason.decode(result)
       chunk_ids = Enum.map(data["chunks"], & &1["id"])
@@ -132,7 +132,7 @@ defmodule BeamSpy.Integration.RegressionTest do
 
     test "no_debug_info.beam has fewer chunks" do
       path = Path.join(@fixture_dir, "no_debug_info.beam")
-      result = Chunks.run(path, format: :json)
+      {:ok, result} = Chunks.run(path, format: :json)
 
       {:ok, data} = Jason.decode(result)
       chunk_ids = Enum.map(data["chunks"], & &1["id"])
@@ -188,10 +188,10 @@ defmodule BeamSpy.Integration.RegressionTest do
     test "export count matches between info and exports" do
       path = Path.join(@fixture_dir, "simple.beam")
 
-      info_result = Info.run(path, format: :json)
+      {:ok, info_result} = Info.run(path, format: :json)
       {:ok, info} = Jason.decode(info_result)
 
-      exports_result = Exports.run(path, format: :json)
+      {:ok, exports_result} = Exports.run(path, format: :json)
       {:ok, exports} = Jason.decode(exports_result)
 
       assert info["export_count"] == length(exports)
@@ -200,10 +200,10 @@ defmodule BeamSpy.Integration.RegressionTest do
     test "atom count matches between info and atoms" do
       path = Path.join(@fixture_dir, "simple.beam")
 
-      info_result = Info.run(path, format: :json)
+      {:ok, info_result} = Info.run(path, format: :json)
       {:ok, info} = Jason.decode(info_result)
 
-      atoms_result = Atoms.run(path, format: :json)
+      {:ok, atoms_result} = Atoms.run(path, format: :json)
       {:ok, atoms} = Jason.decode(atoms_result)
 
       assert info["atom_count"] == length(atoms)

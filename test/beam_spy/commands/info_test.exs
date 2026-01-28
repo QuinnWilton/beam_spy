@@ -43,27 +43,27 @@ defmodule BeamSpy.Commands.InfoTest do
 
   describe "run/2 text format" do
     test "outputs key-value pairs" do
-      output = Info.run(@test_beam_path, format: :text)
+      {:ok, output} = Info.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "Module"
       assert output =~ "lists"
     end
 
     test "includes size information" do
-      output = Info.run(@test_beam_path, format: :text)
+      {:ok, output} = Info.run(@test_beam_path, format: :text)
       assert output =~ "Size" or output =~ "bytes"
     end
   end
 
   describe "run/2 json format" do
     test "outputs valid JSON" do
-      output = Info.run(@test_beam_path, format: :json)
+      {:ok, output} = Info.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
       assert is_map(decoded)
     end
 
     test "JSON has expected fields" do
-      output = Info.run(@test_beam_path, format: :json)
+      {:ok, output} = Info.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert decoded["module"] == "lists"
@@ -86,7 +86,7 @@ defmodule BeamSpy.Commands.InfoTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Info.run(@test_beam_path, format: :json)
+      {:ok, output} = Info.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert decoded["module"] == "lists"
@@ -98,7 +98,7 @@ defmodule BeamSpy.Commands.InfoTest do
 
     @tag :snapshot
     test "text output contains all info fields" do
-      output = Info.run(@test_beam_path, format: :text)
+      {:ok, output} = Info.run(@test_beam_path, format: :text)
 
       assert output =~ "Module"
       assert output =~ "lists"

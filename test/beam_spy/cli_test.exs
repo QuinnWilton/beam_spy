@@ -7,11 +7,11 @@ defmodule BeamSpy.CLITest do
 
   @test_beam_path :code.which(:lists) |> to_string()
 
-  describe "main/1" do
+  describe "run/1" do
     test "shows help with --help" do
       output =
         capture_io(fn ->
-          assert CLI.main(["--help"]) == 0
+          assert CLI.run(["--help"]) == 0
         end)
 
       assert output =~ "USAGE:"
@@ -21,7 +21,7 @@ defmodule BeamSpy.CLITest do
     test "shows version with --version" do
       output =
         capture_io(fn ->
-          assert CLI.main(["--version"]) == 0
+          assert CLI.run(["--version"]) == 0
         end)
 
       assert output =~ "0.1.0"
@@ -30,7 +30,7 @@ defmodule BeamSpy.CLITest do
     test "lists themes with --list-themes" do
       output =
         capture_io(fn ->
-          assert CLI.main(["--list-themes"]) == 0
+          assert CLI.run(["--list-themes"]) == 0
         end)
 
       assert output =~ "default"
@@ -40,7 +40,7 @@ defmodule BeamSpy.CLITest do
     test "shows usage without arguments" do
       output =
         capture_io(fn ->
-          assert CLI.main([]) == 1
+          assert CLI.run([]) == 1
         end)
 
       assert output =~ "Usage:"
@@ -51,7 +51,7 @@ defmodule BeamSpy.CLITest do
     test "extracts atoms from beam file" do
       output =
         capture_io(fn ->
-          assert CLI.main(["atoms", @test_beam_path]) == 0
+          assert CLI.run(["atoms", @test_beam_path]) == 0
         end)
 
       assert output =~ "lists"
@@ -60,7 +60,7 @@ defmodule BeamSpy.CLITest do
     test "outputs JSON format" do
       output =
         capture_io(fn ->
-          assert CLI.main(["atoms", @test_beam_path, "--format=json"]) == 0
+          assert CLI.run(["atoms", @test_beam_path, "--format=json"]) == 0
         end)
 
       {:ok, decoded} = Jason.decode(output)
@@ -73,7 +73,7 @@ defmodule BeamSpy.CLITest do
     test "lists exports from beam file" do
       output =
         capture_io(fn ->
-          assert CLI.main(["exports", @test_beam_path]) == 0
+          assert CLI.run(["exports", @test_beam_path]) == 0
         end)
 
       assert output =~ "map"
@@ -82,7 +82,7 @@ defmodule BeamSpy.CLITest do
     test "plain format outputs one per line" do
       output =
         capture_io(fn ->
-          assert CLI.main(["exports", @test_beam_path, "--plain"]) == 0
+          assert CLI.run(["exports", @test_beam_path, "--plain"]) == 0
         end)
 
       lines = String.split(output, "\n", trim: true)
@@ -97,7 +97,7 @@ defmodule BeamSpy.CLITest do
     test "lists imports from beam file" do
       output =
         capture_io(fn ->
-          assert CLI.main(["imports", @test_beam_path]) == 0
+          assert CLI.run(["imports", @test_beam_path]) == 0
         end)
 
       assert output =~ "erlang"
@@ -108,7 +108,7 @@ defmodule BeamSpy.CLITest do
     test "shows module info" do
       output =
         capture_io(fn ->
-          assert CLI.main(["info", @test_beam_path]) == 0
+          assert CLI.run(["info", @test_beam_path]) == 0
         end)
 
       assert output =~ "Module"
@@ -118,7 +118,7 @@ defmodule BeamSpy.CLITest do
     test "JSON format" do
       output =
         capture_io(fn ->
-          assert CLI.main(["info", @test_beam_path, "--format=json"]) == 0
+          assert CLI.run(["info", @test_beam_path, "--format=json"]) == 0
         end)
 
       {:ok, decoded} = Jason.decode(output)
@@ -130,7 +130,7 @@ defmodule BeamSpy.CLITest do
     test "lists chunks" do
       output =
         capture_io(fn ->
-          assert CLI.main(["chunks", @test_beam_path]) == 0
+          assert CLI.run(["chunks", @test_beam_path]) == 0
         end)
 
       assert output =~ "AtU8" or output =~ "Atom"
@@ -142,7 +142,7 @@ defmodule BeamSpy.CLITest do
     test "disassembles module" do
       output =
         capture_io(fn ->
-          assert CLI.main(["disasm", @test_beam_path, "--function=reverse/1"]) == 0
+          assert CLI.run(["disasm", @test_beam_path, "--function=reverse/1"]) == 0
         end)
 
       assert output =~ "function reverse/1"
@@ -152,7 +152,7 @@ defmodule BeamSpy.CLITest do
     test "JSON format" do
       output =
         capture_io(fn ->
-          assert CLI.main(["disasm", @test_beam_path, "--function=reverse/1", "--format=json"]) ==
+          assert CLI.run(["disasm", @test_beam_path, "--function=reverse/1", "--format=json"]) ==
                    0
         end)
 
@@ -166,7 +166,7 @@ defmodule BeamSpy.CLITest do
     test "reports error for nonexistent file" do
       output =
         capture_io(:stderr, fn ->
-          assert CLI.main(["info", "/nonexistent/file.beam"]) == {:error, 1}
+          assert CLI.run(["info", "/nonexistent/file.beam"]) == 1
         end)
 
       assert output =~ "Could not find"
@@ -175,7 +175,7 @@ defmodule BeamSpy.CLITest do
     test "reports error for invalid command" do
       output =
         capture_io(:stderr, fn ->
-          CLI.main(["invalid_command", @test_beam_path])
+          CLI.run(["invalid_command", @test_beam_path])
         end)
 
       # Optimus will report the error

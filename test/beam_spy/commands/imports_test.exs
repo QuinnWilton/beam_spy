@@ -39,20 +39,20 @@ defmodule BeamSpy.Commands.ImportsTest do
 
   describe "run/2 text format" do
     test "renders table with columns" do
-      output = Imports.run(@test_beam_path, format: :text)
+      {:ok, output} = Imports.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "Module" or output =~ "erlang"
     end
 
     test "grouped format groups by module" do
-      output = Imports.run(@test_beam_path, format: :text, group: true)
+      {:ok, output} = Imports.run(@test_beam_path, format: :text, group: true)
       assert output =~ "erlang"
     end
   end
 
   describe "run/2 json format" do
     test "outputs valid JSON" do
-      output = Imports.run(@test_beam_path, format: :json)
+      {:ok, output} = Imports.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
       assert is_list(decoded)
 
@@ -78,7 +78,7 @@ defmodule BeamSpy.Commands.ImportsTest do
 
     @tag :snapshot
     test "JSON output structure is stable" do
-      output = Imports.run(@test_beam_path, format: :json)
+      {:ok, output} = Imports.run(@test_beam_path, format: :json)
       {:ok, decoded} = Jason.decode(output)
 
       assert is_list(decoded)
@@ -89,7 +89,7 @@ defmodule BeamSpy.Commands.ImportsTest do
 
     @tag :snapshot
     test "text output contains module names" do
-      output = Imports.run(@test_beam_path, format: :text)
+      {:ok, output} = Imports.run(@test_beam_path, format: :text)
 
       assert is_binary(output)
       assert output =~ "erlang"
