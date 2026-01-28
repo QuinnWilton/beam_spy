@@ -63,4 +63,36 @@ defmodule BeamSpy.Commands.ImportsTest do
       end
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract returns list of imports with correct structure" do
+      {:ok, imports} = Imports.extract(@test_beam_path)
+
+      assert is_list(imports)
+      assert length(imports) > 0
+
+      modules = Enum.map(imports, fn {m, _, _} -> m end) |> Enum.uniq()
+      assert :erlang in modules
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Imports.run(@test_beam_path, format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert is_list(decoded)
+      modules = Enum.map(decoded, & &1["module"]) |> Enum.uniq()
+
+      assert "erlang" in modules
+    end
+
+    @tag :snapshot
+    test "text output contains module names" do
+      output = Imports.run(@test_beam_path, format: :text)
+
+      assert is_binary(output)
+      assert output =~ "erlang"
+    end
+  end
 end

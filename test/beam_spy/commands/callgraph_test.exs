@@ -181,4 +181,55 @@ defmodule BeamSpy.Commands.CallgraphTest do
       end
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract returns graph with nodes and edges" do
+      {:ok, graph} = Callgraph.extract(@test_beam_path)
+
+      assert is_list(graph.nodes)
+      assert is_list(graph.edges)
+      assert length(graph.nodes) > 20
+
+      # Known :lists functions should be nodes
+      assert Enum.any?(graph.nodes, &(&1 =~ "lists.map/2"))
+      assert Enum.any?(graph.nodes, &(&1 =~ "lists.reverse/1"))
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Callgraph.run(@test_beam_path, format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert Map.has_key?(decoded, "nodes")
+      assert Map.has_key?(decoded, "edges")
+      assert is_list(decoded["nodes"])
+      assert is_list(decoded["edges"])
+
+      # Edges have correct structure
+      for edge <- decoded["edges"] do
+        assert Map.has_key?(edge, "from")
+        assert Map.has_key?(edge, "to")
+      end
+    end
+
+    @tag :snapshot
+    test "DOT output structure is stable" do
+      output = Callgraph.run(@test_beam_path, format: :dot)
+
+      assert output =~ "digraph callgraph"
+      assert output =~ "rankdir=LR"
+      assert String.trim(output) |> String.ends_with?("}")
+    end
+
+    @tag :snapshot
+    test "text output shows function calls" do
+      output = Callgraph.run(@test_beam_path, format: :text)
+
+      assert is_binary(output)
+      assert output =~ "lists."
+      # Should have call arrows or "no calls" markers
+      assert output =~ "→" or output =~ "(no calls)"
+    end
+  end
 end

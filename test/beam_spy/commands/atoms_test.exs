@@ -54,4 +54,37 @@ defmodule BeamSpy.Commands.AtomsTest do
       end
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract returns list of atoms" do
+      {:ok, atoms} = Atoms.extract(@test_beam_path)
+
+      assert is_list(atoms)
+      assert length(atoms) > 50
+      assert :lists in atoms
+      assert :module_info in atoms
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Atoms.run(@test_beam_path, format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert is_list(decoded)
+      assert "lists" in decoded
+      assert "module_info" in decoded
+    end
+
+    @tag :snapshot
+    test "text output format is stable" do
+      output = Atoms.run(@test_beam_path, format: :text)
+
+      assert is_binary(output)
+      assert output =~ "lists"
+      # One atom per line
+      lines = String.split(output, "\n", trim: true)
+      assert length(lines) > 50
+    end
+  end
 end

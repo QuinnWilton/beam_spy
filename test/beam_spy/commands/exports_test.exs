@@ -67,4 +67,49 @@ defmodule BeamSpy.Commands.ExportsTest do
       end
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract returns sorted list of exports" do
+      {:ok, exports} = Exports.extract(@test_beam_path)
+
+      assert is_list(exports)
+      assert length(exports) > 20
+
+      # Known :lists exports
+      assert {:map, 2} in exports
+      assert {:filter, 2} in exports
+      assert {:reverse, 1} in exports
+      assert {:module_info, 0} in exports
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Exports.run(@test_beam_path, format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert is_list(decoded)
+      names = Enum.map(decoded, & &1["name"])
+
+      assert "map" in names
+      assert "filter" in names
+      assert "reverse" in names
+    end
+
+    @tag :snapshot
+    test "plain text output format is stable" do
+      output = Exports.run(@test_beam_path, format: :text, plain: true)
+
+      lines = String.split(output, "\n", trim: true)
+      assert length(lines) > 20
+
+      # Each line should be function/arity format
+      for line <- lines do
+        assert line =~ ~r/^\w+\/\d+$/
+      end
+
+      assert "map/2" in lines
+      assert "reverse/1" in lines
+    end
+  end
 end

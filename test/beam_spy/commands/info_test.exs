@@ -71,4 +71,39 @@ defmodule BeamSpy.Commands.InfoTest do
       assert is_integer(decoded["export_count"])
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract returns complete info map" do
+      {:ok, info} = Info.extract(@test_beam_path)
+
+      assert info.module == :lists
+      assert is_integer(info.size_bytes) and info.size_bytes > 0
+      assert is_integer(info.export_count) and info.export_count > 20
+      assert is_integer(info.import_count) and info.import_count >= 0
+      assert is_integer(info.atom_count) and info.atom_count > 50
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Info.run(@test_beam_path, format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert decoded["module"] == "lists"
+      assert is_integer(decoded["size_bytes"])
+      assert is_integer(decoded["export_count"])
+      assert is_integer(decoded["import_count"])
+      assert is_integer(decoded["atom_count"])
+    end
+
+    @tag :snapshot
+    test "text output contains all info fields" do
+      output = Info.run(@test_beam_path, format: :text)
+
+      assert output =~ "Module"
+      assert output =~ "lists"
+      assert output =~ ~r/[Ss]ize/
+      assert output =~ ~r/[Ee]xport/
+    end
+  end
 end

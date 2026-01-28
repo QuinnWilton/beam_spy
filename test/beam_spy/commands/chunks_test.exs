@@ -83,4 +83,48 @@ defmodule BeamSpy.Commands.ChunksTest do
       assert output =~ "not found" or output =~ "error" or output =~ "Error"
     end
   end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "extract returns standard BEAM chunks" do
+      {:ok, data} = Chunks.extract(@test_beam_path)
+
+      assert is_map(data)
+      assert is_list(data.chunks)
+
+      ids = Enum.map(data.chunks, & &1.id)
+
+      # Standard chunks every BEAM file has
+      assert "Code" in ids
+      assert "ExpT" in ids
+      assert "ImpT" in ids
+      # Atom table (AtU8 for UTF-8 atoms, or Atom for legacy)
+      assert Enum.any?(ids, &(&1 in ["AtU8", "Atom"]))
+    end
+
+    @tag :snapshot
+    test "JSON output structure is stable" do
+      output = Chunks.run(@test_beam_path, format: :json)
+      {:ok, decoded} = Jason.decode(output)
+
+      assert Map.has_key?(decoded, "chunks")
+      assert is_list(decoded["chunks"])
+
+      for chunk <- decoded["chunks"] do
+        assert Map.has_key?(chunk, "id")
+        assert Map.has_key?(chunk, "size")
+        assert is_binary(chunk["id"])
+        assert is_integer(chunk["size"])
+      end
+    end
+
+    @tag :snapshot
+    test "text output shows chunk table" do
+      output = Chunks.run(@test_beam_path, format: :text)
+
+      assert is_binary(output)
+      assert output =~ "Code"
+      assert output =~ "ExpT"
+    end
+  end
 end
