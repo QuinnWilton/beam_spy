@@ -34,12 +34,13 @@ defmodule BeamSpy.PagerTest do
     end
 
     test "handles non-existent pager gracefully" do
-      # Use a non-existent pager
-      System.put_env("PAGER", "/nonexistent/pager/that/does/not/exist")
+      # Use a non-existent pager, redirecting stderr to suppress shell error.
+      # The port uses :nouse_stdio so the shell's stderr goes directly to
+      # the terminal - we must redirect it in the command itself.
+      System.put_env("PAGER", "/nonexistent/pager/that/does/not/exist 2>/dev/null")
 
       try do
-        # Should not crash - pager failure is handled by the shell
-        # The pager runs via sh -c, so sh handles the error
+        # Should not crash - pager failure is handled by the shell.
         assert :ok = Pager.page("test content\n")
       after
         System.delete_env("PAGER")
