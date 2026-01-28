@@ -1,0 +1,43 @@
+# BeamSpy Default Theme
+# A conservative dark theme with high contrast colors
+
+name = "Default"
+variant = "dark"
+
+[colors]
+# UI elements (all commands)
+"ui.header" = { fg = "white", style = "bold" }
+"ui.border" = "bright_black"
+"ui.key" = "cyan"
+"ui.value" = "default"
+"ui.arrow" = "bright_black"
+"ui.dim" = "bright_black"
+
+# Data types (multiple commands)
+"atom" = "cyan"
+"atom.special" = { fg = "cyan", style = "bold" }
+"module" = "yellow"
+"function" = "green"
+"arity" = "bright_black"
+"number" = "magenta"
+"string" = "green"
+"chunk_id" = { fg = "blue", style = "bold" }
+
+# Opcodes (disasm)
+"opcode.call" = "green"
+"opcode.control" = "magenta"
+"opcode.data" = "default"
+"opcode.stack" = "default"
+"opcode.return" = "red"
+"opcode.exception" = "cyan"
+"opcode.error" = "red"
+"opcode.message" = "blue"
+"opcode.binary" = "yellow"
+"opcode.meta" = "bright_black"
+"opcode.unknown" = "bright_red"
+
+# Registers (disasm)
+"register.x" = "yellow"
+"register.y" = "bright_yellow"
+"register.fr" = "bright_cyan"
+"label" = "yellow"

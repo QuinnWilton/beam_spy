@@ -1,0 +1,43 @@
+# BeamSpy Monokai Theme
+# Warm colors inspired by the Monokai color scheme
+
+name = "Monokai"
+variant = "dark"
+
+[colors]
+# UI elements
+"ui.header" = { fg = "white", style = "bold" }
+"ui.border" = "bright_black"
+"ui.key" = "cyan"
+"ui.value" = "white"
+"ui.arrow" = "bright_black"
+"ui.dim" = "bright_black"
+
+# Data types
+"atom" = "cyan"
+"atom.special" = { fg = "magenta", style = "bold" }
+"module" = "green"
+"function" = "yellow"
+"arity" = "bright_black"
+"number" = "magenta"
+"string" = "yellow"
+"chunk_id" = { fg = "cyan", style = "bold" }
+
+# Opcodes
+"opcode.call" = "green"
+"opcode.control" = "magenta"
+"opcode.data" = "white"
+"opcode.stack" = "cyan"
+"opcode.return" = "red"
+"opcode.exception" = "magenta"
+"opcode.error" = "red"
+"opcode.message" = "cyan"
+"opcode.binary" = "yellow"
+"opcode.meta" = "bright_black"
+"opcode.unknown" = "bright_red"
+
+# Registers
+"register.x" = "yellow"
+"register.y" = "bright_yellow"
+"register.fr" = "cyan"
+"label" = "magenta"
