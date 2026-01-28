@@ -14,7 +14,7 @@ defmodule BeamSpy.CLI do
 
   alias BeamSpy.Resolver
   alias BeamSpy.Theme
-  alias BeamSpy.Commands.{Atoms, Exports, Imports, Info, Chunks, Disasm}
+  alias BeamSpy.Commands.{Atoms, Exports, Imports, Info, Chunks, Disasm, Callgraph}
 
   @doc """
   Main entry point for the CLI.
@@ -71,7 +71,8 @@ defmodule BeamSpy.CLI do
         imports: imports_command(),
         info: info_command(),
         chunks: chunks_command(),
-        disasm: disasm_command()
+        disasm: disasm_command(),
+        callgraph: callgraph_command()
       ]
     )
   end
@@ -221,6 +222,29 @@ defmodule BeamSpy.CLI do
     ]
   end
 
+  defp callgraph_command do
+    [
+      name: "callgraph",
+      about: "Build function call graph",
+      args: [
+        file: [
+          value_name: "FILE",
+          help: "BEAM file or module name",
+          required: true,
+          parser: :string
+        ]
+      ],
+      options: [
+        format: [
+          long: "--format",
+          help: "Output format: text, json, dot",
+          parser: :string,
+          default: "text"
+        ]
+      ]
+    ]
+  end
+
   # Common options
 
   defp format_option do
@@ -264,6 +288,7 @@ defmodule BeamSpy.CLI do
       :info -> run_info(parsed)
       :chunks -> run_chunks(parsed)
       :disasm -> run_disasm(parsed)
+      :callgraph -> run_callgraph(parsed)
       _ -> unknown_command(subcommand)
     end
   end
@@ -324,6 +349,23 @@ defmodule BeamSpy.CLI do
     with {:ok, path} <- resolve_file(parsed) do
       opts = build_opts(parsed, [:format, :function, :source])
       output = Disasm.run(path, opts)
+      IO.puts(output)
+      0
+    end
+  end
+
+  defp run_callgraph(parsed) do
+    with {:ok, path} <- resolve_file(parsed) do
+      opts = build_opts(parsed, [:format])
+
+      # Convert dot format string
+      opts =
+        case Keyword.get(opts, :format) do
+          "dot" -> Keyword.put(opts, :format, :dot)
+          _ -> opts
+        end
+
+      output = Callgraph.run(path, opts)
       IO.puts(output)
       0
     end
