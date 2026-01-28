@@ -13,7 +13,9 @@ defmodule BeamSpy.Resolver do
      - `_build/dev/lib/*/ebin/ModuleName.beam`
      - `_build/prod/lib/*/ebin/ModuleName.beam`
   4. Erlang code path: `:code.get_path()` locations
-  5. `ERL_LIBS` environment variable paths
+  5. Erlang OTP lib paths: `:code.lib_dir/1` for common OTP apps
+  6. Elixir installation: discovered via `elixir` executable location
+  7. `ERL_LIBS` environment variable paths
 
   ## Examples
 
@@ -108,6 +110,8 @@ defmodule BeamSpy.Resolver do
       ["."] ++
       mix_project_paths() ++
       erlang_code_paths() ++
+      otp_lib_paths() ++
+      elixir_installation_paths() ++
       erl_libs_paths()
   end
 
@@ -135,6 +139,50 @@ defmodule BeamSpy.Resolver do
   defp erlang_code_paths do
     :code.get_path()
     |> Enum.map(&to_string/1)
+  end
+
+  # Discover Erlang OTP application ebin paths via :code.lib_dir/1.
+  # This works in escript contexts where :code.get_path() is limited.
+  # Note: Elixir apps are handled separately via elixir_installation_paths/0
+  # because :code.lib_dir(:elixir) returns escript-internal paths.
+  defp otp_lib_paths do
+    # Erlang OTP apps only - Elixir apps are discovered differently.
+    apps = [:stdlib, :kernel, :compiler, :crypto, :ssl, :inets]
+
+    apps
+    |> Enum.flat_map(fn app ->
+      case :code.lib_dir(app) do
+        {:error, _} -> []
+        path -> [Path.join(to_string(path), "ebin")]
+      end
+    end)
+    |> Enum.filter(&File.dir?/1)
+  end
+
+  # Discover Elixir installation paths.
+  # In escript contexts, :code.lib_dir(:elixir) returns internal paths,
+  # so we check common installation locations directly.
+  defp elixir_installation_paths do
+    home = System.user_home() || ""
+
+    # Common installation patterns for Elixir.
+    patterns = [
+      # asdf
+      Path.join([home, ".asdf", "installs", "elixir", "*", "lib", "*", "ebin"]),
+      # mise (formerly rtx)
+      Path.join([home, ".local", "share", "mise", "installs", "elixir", "*", "lib", "*", "ebin"]),
+      # Homebrew Apple Silicon
+      Path.join(["/opt", "homebrew", "Cellar", "elixir", "*", "lib", "*", "ebin"]),
+      # Homebrew Intel
+      Path.join(["/usr", "local", "Cellar", "elixir", "*", "lib", "*", "ebin"]),
+      # System installations
+      Path.join(["/usr", "lib", "elixir", "lib", "*", "ebin"]),
+      Path.join(["/usr", "local", "lib", "elixir", "lib", "*", "ebin"])
+    ]
+
+    patterns
+    |> Enum.flat_map(&Path.wildcard/1)
+    |> Enum.filter(&File.dir?/1)
   end
 
   defp erl_libs_paths do
