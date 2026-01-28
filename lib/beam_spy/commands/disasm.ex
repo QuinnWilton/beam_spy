@@ -409,17 +409,29 @@ defmodule BeamSpy.Commands.Disasm do
 
     header = "\n#{styled_header}\n#{border}\n"
 
+    # source_lines being non-empty means we have actual source to show
+    # line_table being non-empty means source was requested (even if unavailable)
+    source_requested_but_unavailable = map_size(source_lines) == 0 and map_size(line_table) > 0
+
     instructions =
       if map_size(source_lines) > 0 do
         format_instructions_with_source(func, source_lines, line_table, theme)
       else
         func.instructions
+        |> maybe_filter_line_instructions(source_requested_but_unavailable)
         |> Enum.map(&format_instruction_text(&1, theme))
         |> Enum.join("\n")
       end
 
     header <> instructions
   end
+
+  # Filter out line instructions when source was requested but unavailable
+  defp maybe_filter_line_instructions(instructions, true) do
+    Enum.reject(instructions, fn {_category, name, _args} -> name == "line" end)
+  end
+
+  defp maybe_filter_line_instructions(instructions, false), do: instructions
 
   defp format_instructions_with_source(func, source_lines, line_table, theme) do
     # Group instructions by line number, resolving indices via line_table
