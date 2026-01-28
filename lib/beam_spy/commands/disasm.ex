@@ -127,23 +127,70 @@ defmodule BeamSpy.Commands.Disasm do
   defp format_arg({:f, n}), do: "f(#{n})"
   defp format_arg({:atom, a}), do: inspect(a)
   defp format_arg({:integer, n}), do: to_string(n)
-  defp format_arg({:literal, lit}), do: inspect(lit, limit: :infinity, printable_limit: 100)
+  defp format_arg({:literal, lit}), do: format_literal(lit)
+  # Typed register - just show the register, ignore JIT type info
   defp format_arg({:tr, reg, _type}), do: format_arg(reg)
 
   defp format_arg({:extfunc, m, f, a}) do
     "#{inspect(m)}:#{inspect(f)}/#{a}"
   end
 
-  defp format_arg({:list, items}) do
-    formatted = Enum.map(items, &format_arg/1)
-    "[#{Enum.join(formatted, ", ")}]"
-  end
+  # Handle both {:list, items} from beam_disasm and raw Elixir lists
+  defp format_arg({:list, items}), do: format_arg_list(items)
+  defp format_arg(items) when is_list(items), do: format_arg_list(items)
 
   defp format_arg(nil), do: "[]"
   defp format_arg(n) when is_integer(n), do: to_string(n)
   defp format_arg(a) when is_atom(a), do: inspect(a)
+  defp format_arg(bin) when is_binary(bin), do: format_literal(bin)
   defp format_arg({tag, value}) when is_atom(tag), do: "{#{tag}, #{format_arg(value)}}"
-  defp format_arg(other), do: inspect(other, limit: :infinity)
+  defp format_arg(other), do: format_literal(other)
+
+  defp format_arg_list(items) do
+    formatted = Enum.map(items, &format_arg/1)
+    result = "[#{Enum.join(formatted, ", ")}]"
+    truncate_if_long(result, 80)
+  end
+
+  # Format literals with truncation for readability
+  defp format_literal(lit) when is_binary(lit) do
+    if byte_size(lit) > 20 do
+      # Show first few bytes of binary
+      preview = binary_part(lit, 0, min(16, byte_size(lit)))
+      "<<#{inspect_binary_bytes(preview)}...>> (#{byte_size(lit)} bytes)"
+    else
+      inspect(lit)
+    end
+  end
+
+  defp format_literal(lit) when is_list(lit) do
+    result = inspect(lit, limit: 8, printable_limit: 50)
+    truncate_if_long(result, 80)
+  end
+
+  defp format_literal(lit) when is_map(lit) do
+    result = inspect(lit, limit: 4, printable_limit: 50)
+    truncate_if_long(result, 80)
+  end
+
+  defp format_literal(lit) do
+    result = inspect(lit, limit: 8, printable_limit: 50)
+    truncate_if_long(result, 80)
+  end
+
+  defp inspect_binary_bytes(bin) do
+    bin
+    |> :binary.bin_to_list()
+    |> Enum.map_join(", ", &to_string/1)
+  end
+
+  defp truncate_if_long(str, max_len) do
+    if String.length(str) > max_len do
+      String.slice(str, 0, max_len) <> "..."
+    else
+      str
+    end
+  end
 
   # Filter functions by pattern
   defp filter_functions(funcs, pattern) do
