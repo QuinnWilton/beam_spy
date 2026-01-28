@@ -61,8 +61,9 @@ defmodule BeamSpy.Pager do
 
     :ok
   rescue
-    _ ->
+    error ->
       # Fallback to just printing if pager fails
+      IO.puts(:stderr, "Warning: pager failed (#{inspect(error)}), printing directly")
       IO.puts(output)
       :ok
   end
