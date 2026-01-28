@@ -9,14 +9,22 @@ defmodule BeamSpy.CLITest do
 
   describe "main/1" do
     test "shows help with --help" do
-      # Optimus prints help directly to stdout before returning :help
-      # We just verify it returns 0 and doesn't crash
-      assert CLI.main(["--help"]) == 0
+      output =
+        capture_io(fn ->
+          assert CLI.main(["--help"]) == 0
+        end)
+
+      assert output =~ "USAGE:"
+      assert output =~ "SUBCOMMANDS:"
     end
 
     test "shows version with --version" do
-      # Optimus prints version directly to stdout before returning :version
-      assert CLI.main(["--version"]) == 0
+      output =
+        capture_io(fn ->
+          assert CLI.main(["--version"]) == 0
+        end)
+
+      assert output =~ "0.1.0"
     end
 
     test "lists themes with --list-themes" do
