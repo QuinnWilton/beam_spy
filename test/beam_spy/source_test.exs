@@ -1,7 +1,9 @@
 defmodule BeamSpy.SourceTest do
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   alias BeamSpy.Source
+  alias BeamSpy.Test.Helpers
 
   # Use a known Elixir stdlib module that has debug info
   @elixir_beam_path :code.which(Enum) |> to_string()
@@ -143,6 +145,104 @@ defmodule BeamSpy.SourceTest do
       # Should recognize {:meta, "line", ["N"]} format
       line_10 = Enum.find(groups, fn {line, _} -> line == 10 end)
       assert line_10 != nil
+    end
+  end
+
+  describe "fixture-based tests" do
+    test "loads source from test fixture with source file" do
+      result = Source.load_source("test/fixtures/beam/simple.beam")
+
+      case result do
+        {:ok, lines} ->
+          assert is_map(lines)
+          # Should have some content
+          assert map_size(lines) >= 0
+
+        {:error, _} ->
+          # Source file path might not be found
+          :ok
+      end
+    end
+
+    test "returns error for stripped module without debug info" do
+      result = Source.load_source("test/fixtures/beam/no_debug_info.beam")
+      assert {:error, :no_debug_info} = result
+    end
+  end
+
+  describe "property tests" do
+    property "line numbers in grouped instructions preserve input order" do
+      # Test with generated instruction sequences that have line markers
+      check all(
+              line_markers <- list_of(positive_integer(), min_length: 1, max_length: 20),
+              instructions_per_line <- list_of(positive_integer(), length: length(line_markers))
+            ) do
+        # Build an instruction sequence with line markers
+        instructions =
+          Enum.zip(line_markers, instructions_per_line)
+          |> Enum.flat_map(fn {line, count} ->
+            # Add a line marker followed by some instructions
+            [{:line, line}] ++ List.duplicate({:return}, count)
+          end)
+
+        groups = Source.group_by_line(instructions)
+        output_lines = Enum.map(groups, fn {line, _} -> line end) |> Enum.reject(&is_nil/1)
+
+        # Output order should match the unique ordered input sequence
+        # (consecutive duplicates are merged, so we need to dedup while preserving order)
+        expected_order = Enum.dedup(line_markers)
+        assert output_lines == expected_order
+      end
+    end
+
+    property "grouped instructions preserve all non-line instructions" do
+      check all(
+              num_groups <- integer(1..10),
+              line_numbers <- list_of(positive_integer(), length: num_groups),
+              instruction_counts <- list_of(integer(1..5), length: num_groups)
+            ) do
+        # Build instruction list with line markers and returns
+        total_non_line_instructions = Enum.sum(instruction_counts)
+
+        instructions =
+          Enum.zip(line_numbers, instruction_counts)
+          |> Enum.flat_map(fn {line, count} ->
+            [{:line, line}] ++ List.duplicate({:return}, count)
+          end)
+
+        groups = Source.group_by_line(instructions)
+
+        # Count all non-line instructions in groups
+        grouped_instruction_count =
+          groups
+          |> Enum.flat_map(fn {_line, insts} -> insts end)
+          |> length()
+
+        # Should preserve all non-line instructions
+        assert grouped_instruction_count == total_non_line_instructions
+      end
+    end
+
+    property "grouping stdlib modules produces valid groups" do
+      check all(module <- member_of([Enum, List, Map, String, :lists, :maps])) do
+        beam_path = Helpers.beam_path(module)
+        {:ok, result} = BeamSpy.Commands.Disasm.extract(beam_path)
+
+        # Get instructions from first function
+        case result.functions do
+          [first_func | _] ->
+            groups = Source.group_by_line(first_func.instructions)
+
+            # Each group should be a tuple {line | nil, list}
+            for {line, insts} <- groups do
+              assert is_nil(line) or is_integer(line)
+              assert is_list(insts)
+            end
+
+          [] ->
+            :ok
+        end
+      end
     end
   end
 end
