@@ -94,6 +94,42 @@ defmodule BeamSpy.Filter do
   end
 
   @doc """
+  Applies a filter to a list of items, or returns items unchanged if pattern is nil.
+
+  Parses the pattern using `parse/1` to support re:, glob:, and substring prefixes.
+  Falls back to substring matching if parsing fails.
+  """
+  @spec maybe_apply([term()], String.t() | nil) :: [term()]
+  def maybe_apply(items, nil), do: items
+
+  def maybe_apply(items, pattern) when is_binary(pattern) do
+    case parse(pattern) do
+      {:ok, filter} -> filter_list(filter, items)
+      {:error, _} -> filter_list(substring(pattern), items)
+    end
+  end
+
+  @doc """
+  Applies a filter to a list of items using a key extraction function.
+
+  Like `maybe_apply/2` but extracts the matchable value from each item using key_fn.
+  Useful for filtering lists of tuples or maps.
+  """
+  @spec maybe_apply_with_key([term()], String.t() | nil, (term() -> term())) :: [term()]
+  def maybe_apply_with_key(items, nil, _key_fn), do: items
+
+  def maybe_apply_with_key(items, pattern, key_fn) when is_binary(pattern) do
+    case parse(pattern) do
+      {:ok, filter} ->
+        Enum.filter(items, fn item -> matches?(filter, key_fn.(item)) end)
+
+      {:error, _} ->
+        filter = substring(pattern)
+        Enum.filter(items, fn item -> matches?(filter, key_fn.(item)) end)
+    end
+  end
+
+  @doc """
   Parses a filter from a string with optional type prefix.
 
   If no prefix is given, defaults to substring matching.
