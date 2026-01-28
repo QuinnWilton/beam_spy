@@ -80,32 +80,12 @@ defmodule BeamSpy.Test.Helpers do
 
   @doc """
   Get the path to the compiled Gleam test fixture.
-  Ensures the Gleam artefacts are compiled to beam files.
+  The fixture is compiled automatically by mix_gleam.
   """
   def gleam_fixture_path(module_name \\ "test_fixture") do
     ebin_dir = Path.join([File.cwd!(), "_build/test/lib/beam_spy/ebin"])
     beam_file = Path.join(ebin_dir, "#{module_name}.beam")
 
-    # Compile Gleam artefacts if beam file doesn't exist
-    if not File.exists?(beam_file) do
-      compile_gleam_artefacts()
-    end
-
     if File.exists?(beam_file), do: beam_file, else: nil
-  end
-
-  defp compile_gleam_artefacts do
-    artefacts_dir = Path.join([File.cwd!(), "_build/test/lib/beam_spy/_gleam_artefacts"])
-    ebin_dir = Path.join([File.cwd!(), "_build/test/lib/beam_spy/ebin"])
-
-    if File.exists?(artefacts_dir) do
-      artefacts_dir
-      |> File.ls!()
-      |> Enum.filter(&String.ends_with?(&1, ".erl"))
-      |> Enum.each(fn file ->
-        src_path = Path.join(artefacts_dir, file)
-        System.cmd("erlc", ["-o", ebin_dir, src_path], stderr_to_stdout: true)
-      end)
-    end
   end
 end

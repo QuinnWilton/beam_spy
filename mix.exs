@@ -11,12 +11,11 @@ defmodule BeamSpy.MixProject do
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       compilers: [:gleam] ++ Mix.compilers(),
+      erlc_paths: erlc_paths(Mix.env()),
       deps: deps(),
       escript: escript(),
       releases: releases(),
       aliases: aliases(),
-      erlc_paths: ["src"],
-      erlc_include_path: "src",
 
       # Test
       test_ignore_filters: [~r{test/fixtures/}, ~r{test/support/}],
@@ -62,8 +61,8 @@ defmodule BeamSpy.MixProject do
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
 
       # Test fixtures for other BEAM languages
-      {:mix_gleam, "~> 0.6", only: :test, runtime: false},
-      {:gleam_stdlib, "~> 0.68", only: :test, runtime: false, app: false}
+      {:mix_gleam, "~> 0.6", only: [:dev, :test], runtime: false},
+      {:gleam_stdlib, "~> 0.68", only: [:dev, :test], runtime: false, app: false}
     ]
   end
 
@@ -112,4 +111,8 @@ defmodule BeamSpy.MixProject do
       source_ref: "v#{@version}"
     ]
   end
+
+  # Include Gleam-generated Erlang files in dev/test
+  defp erlc_paths(:prod), do: []
+  defp erlc_paths(_env), do: ["src", "_build/#{Mix.env()}/lib/beam_spy/_gleam_artefacts"]
 end
