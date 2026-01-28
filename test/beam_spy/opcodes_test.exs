@@ -38,19 +38,24 @@ defmodule BeamSpy.OpcodesTest do
 
   describe "arity/1" do
     test "returns arity for known opcode" do
-      assert Opcodes.arity(4) == 2  # call/2
-      assert Opcodes.arity(19) == 0  # return/0
+      # call/2
+      assert Opcodes.arity(4) == 2
+      # return/0
+      assert Opcodes.arity(19) == 0
     end
   end
 
   describe "deprecated?/1" do
     test "returns false for active opcodes" do
-      refute Opcodes.deprecated?(4)  # call
-      refute Opcodes.deprecated?(19)  # return
+      # call
+      refute Opcodes.deprecated?(4)
+      # return
+      refute Opcodes.deprecated?(19)
     end
 
     test "returns true for deprecated opcodes" do
-      assert Opcodes.deprecated?(14)  # allocate_zero
+      # allocate_zero
+      assert Opcodes.deprecated?(14)
     end
   end
 
@@ -151,7 +156,7 @@ defmodule BeamSpy.OpcodesTest do
     property "all active opcodes have valid structure" do
       opcodes = Opcodes.active()
 
-      check all opcode <- member_of(opcodes) do
+      check all(opcode <- member_of(opcodes)) do
         assert is_integer(opcode.opcode) and opcode.opcode >= 0
         assert is_atom(opcode.name)
         assert is_integer(opcode.arity) and opcode.arity >= 0
@@ -167,7 +172,7 @@ defmodule BeamSpy.OpcodesTest do
     end
 
     property "info/1 and name/1 are consistent" do
-      check all opcode <- member_of(Opcodes.all()) do
+      check all(opcode <- member_of(Opcodes.all())) do
         info = Opcodes.info(opcode.opcode)
         name = Opcodes.name(opcode.opcode)
         assert info.name == name
@@ -175,17 +180,29 @@ defmodule BeamSpy.OpcodesTest do
     end
 
     property "number/1 and name/1 are inverses" do
-      check all opcode <- member_of(Opcodes.all()) do
+      check all(opcode <- member_of(Opcodes.all())) do
         number = Opcodes.number(opcode.name)
         assert number == opcode.opcode
       end
     end
 
     property "all active opcodes have a defined category" do
-      check all opcode <- member_of(Opcodes.active()) do
+      check all(opcode <- member_of(Opcodes.active())) do
         category = Opcodes.category(opcode.name)
-        assert category in [:call, :stack, :data, :control, :exception,
-                            :error, :message, :binary, :return, :meta, :unknown]
+
+        assert category in [
+                 :call,
+                 :stack,
+                 :data,
+                 :control,
+                 :exception,
+                 :error,
+                 :message,
+                 :binary,
+                 :return,
+                 :meta,
+                 :unknown
+               ]
       end
     end
   end

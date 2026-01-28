@@ -108,7 +108,8 @@ defmodule BeamSpy.SourceTest do
       instructions = [
         {:line, 10},
         {:move, {:atom, :a}, {:x, 0}},
-        {:line, 10},  # Same line again
+        # Same line again
+        {:line, 10},
         {:move, {:atom, :b}, {:x, 1}}
       ]
 

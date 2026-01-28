@@ -179,7 +179,10 @@ defmodule BeamSpy.Commands.Disasm do
     end
   end
 
-  defp matches_function_filter?(%{name: name, arity: arity}, {:exact, pattern_name, pattern_arity}) do
+  defp matches_function_filter?(
+         %{name: name, arity: arity},
+         {:exact, pattern_name, pattern_arity}
+       ) do
     to_string(name) == pattern_name and arity == pattern_arity
   end
 

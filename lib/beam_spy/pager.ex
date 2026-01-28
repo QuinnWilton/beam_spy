@@ -72,7 +72,8 @@ defmodule BeamSpy.Pager do
     case Terminal.rows() do
       rows when is_integer(rows) and rows > 0 ->
         line_count = count_lines(output)
-        line_count > rows - 2  # Leave room for prompt
+        # Leave room for prompt
+        line_count > rows - 2
 
       _ ->
         false

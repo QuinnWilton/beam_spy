@@ -119,6 +119,18 @@ defmodule BeamSpy.Opcodes do
   """
   @spec categories() :: [atom()]
   def categories do
-    [:call, :stack, :data, :control, :return, :exception, :error, :message, :binary, :meta, :unknown]
+    [
+      :call,
+      :stack,
+      :data,
+      :control,
+      :return,
+      :exception,
+      :error,
+      :message,
+      :binary,
+      :meta,
+      :unknown
+    ]
   end
 end

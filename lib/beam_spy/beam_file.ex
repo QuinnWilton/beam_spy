@@ -68,7 +68,8 @@ defmodule BeamSpy.BeamFile do
 
   Returns raw chunk data as `{chunk_id, binary}` tuples.
   """
-  @spec read_all_chunks(String.t()) :: {:ok, [{atom() | charlist(), binary()}]} | {:error, beam_error()}
+  @spec read_all_chunks(String.t()) ::
+          {:ok, [{atom() | charlist(), binary()}]} | {:error, beam_error()}
   def read_all_chunks(path) do
     case :beam_lib.all_chunks(to_charlist(path)) do
       {:ok, _module, chunks} ->
@@ -128,7 +129,8 @@ defmodule BeamSpy.BeamFile do
 
   Returns a list of `{function_name, arity, label}` tuples.
   """
-  @spec read_exports(String.t()) :: {:ok, [{atom(), non_neg_integer(), non_neg_integer()}]} | {:error, beam_error()}
+  @spec read_exports(String.t()) ::
+          {:ok, [{atom(), non_neg_integer(), non_neg_integer()}]} | {:error, beam_error()}
   def read_exports(path) do
     case read_chunks(path, [:exports]) do
       {:ok, [{:exports, exports}]} -> {:ok, exports}
@@ -141,7 +143,8 @@ defmodule BeamSpy.BeamFile do
 
   Returns a list of `{module, function_name, arity}` tuples.
   """
-  @spec read_imports(String.t()) :: {:ok, [{atom(), atom(), non_neg_integer()}]} | {:error, beam_error()}
+  @spec read_imports(String.t()) ::
+          {:ok, [{atom(), atom(), non_neg_integer()}]} | {:error, beam_error()}
   def read_imports(path) do
     case read_chunks(path, [:imports]) do
       {:ok, [{:imports, imports}]} -> {:ok, imports}

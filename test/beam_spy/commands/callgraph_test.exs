@@ -52,7 +52,8 @@ defmodule BeamSpy.Commands.CallgraphTest do
       output = Callgraph.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "lists."
-      assert output =~ "→"  # Arrow for call edges
+      # Arrow for call edges
+      assert output =~ "→"
     end
 
     test "shows functions with no calls" do

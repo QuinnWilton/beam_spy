@@ -252,6 +252,6 @@ defmodule BeamSpy.Source do
   defp erl_pp_form({:var, _, name}), do: to_string(name)
   defp erl_pp_form({:atom, _, name}), do: to_string(name)
   defp erl_pp_form({:integer, _, n}), do: to_string(n)
-  defp erl_pp_form({:nil, _}), do: "[]"
+  defp erl_pp_form({nil, _}), do: "[]"
   defp erl_pp_form(other), do: inspect(other, limit: 20)
 end

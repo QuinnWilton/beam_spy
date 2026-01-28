@@ -29,7 +29,8 @@ defmodule BeamSpy.Commands.ChunksTest do
       ids = Enum.map(data.chunks, & &1.id) |> Enum.map(&to_string/1)
 
       # Every BEAM file should have these
-      assert Enum.any?(ids, &(&1 =~ "At")) # Atom table
+      # Atom table
+      assert Enum.any?(ids, &(&1 =~ "At"))
       assert Enum.any?(ids, &(&1 == "Code"))
       assert Enum.any?(ids, &(&1 == "ExpT"))
       assert Enum.any?(ids, &(&1 == "ImpT"))

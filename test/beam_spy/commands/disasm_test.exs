@@ -47,9 +47,12 @@ defmodule BeamSpy.Commands.DisasmTest do
         |> Enum.uniq()
 
       # Should have at least some common categories
-      assert :control in all_categories  # labels
-      assert :error in all_categories    # func_info
-      assert :return in all_categories   # return
+      # labels
+      assert :control in all_categories
+      # func_info
+      assert :error in all_categories
+      # return
+      assert :return in all_categories
     end
 
     test "filters by function name" do

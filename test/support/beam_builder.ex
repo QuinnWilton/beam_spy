@@ -40,6 +40,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def bar(x), do: x + 1
     end
     """
+
     compile_to_fixture(code, "simple.beam", "simple.ex")
   end
 
@@ -58,6 +59,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def recursive(n) when n > 0, do: recursive(n - 1)
     end
     """
+
     compile_to_fixture(code, "complex.beam", "complex.ex")
   end
 
@@ -68,6 +70,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def length_of(list), do: :erlang.length(list)
     end
     """
+
     compile_to_fixture(code, "with_imports.beam", "with_imports.ex")
   end
 
@@ -78,6 +81,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def sum(list), do: Enum.reduce(list, 0, &+/2)
     end
     """
+
     compile_to_fixture(code, "uses_enum.beam", "uses_enum.ex")
   end
 
@@ -89,6 +93,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       defp private_helper(x), do: x * 2
     end
     """
+
     compile_to_fixture(code, "with_private.beam", "with_private.ex")
   end
 
@@ -103,6 +108,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def handle_info(:tick, state), do: {:noreply, state}
     end
     """
+
     compile_to_fixture(code, "genserver.beam", "genserver.ex")
   end
 
@@ -114,6 +120,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def list, do: [1, 2, 3]
     end
     """
+
     compile_to_fixture(code, "no_imports.beam", "no_imports.ex")
   end
 
@@ -129,6 +136,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def mutual_b(n), do: mutual_a(n)
     end
     """
+
     compile_to_fixture(code, "recursive.beam", "recursive.ex")
   end
 
@@ -143,6 +151,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def nested, do: %{data: [1, [2, [3, [4]]]]}
     end
     """
+
     compile_to_fixture(code, "with_literals.beam", "with_literals.ex")
   end
 
@@ -159,6 +168,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def cafe, do: :coffee
     end
     """
+
     compile_to_fixture(code, "unicode_atoms.beam", "unicode_atoms.ex")
   end
 
@@ -170,6 +180,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def numeric_end, do: :test123
     end
     """
+
     compile_to_fixture(code, "special_atoms.beam", "special_atoms.ex")
   end
 
@@ -195,6 +206,7 @@ defmodule BeamSpy.Test.BeamBuilder do
       def get, do: @nested
     end
     """
+
     compile_to_fixture(code, "nested_literal.beam", "nested_literal.ex")
   end
 

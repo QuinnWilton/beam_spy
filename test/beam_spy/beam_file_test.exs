@@ -59,12 +59,13 @@ defmodule BeamSpy.BeamFileTest do
     test "includes standard chunks" do
       {:ok, chunks} = BeamFile.read_all_chunks(@test_beam_path)
       # Convert all IDs to strings for comparison
-      chunk_ids = Enum.map(chunks, fn {id, _} ->
-        cond do
-          is_atom(id) -> Atom.to_string(id)
-          is_list(id) -> List.to_string(id)
-        end
-      end)
+      chunk_ids =
+        Enum.map(chunks, fn {id, _} ->
+          cond do
+            is_atom(id) -> Atom.to_string(id)
+            is_list(id) -> List.to_string(id)
+          end
+        end)
 
       # Every BEAM file should have these
       assert "AtU8" in chunk_ids or "Atom" in chunk_ids
@@ -121,10 +122,12 @@ defmodule BeamSpy.BeamFileTest do
 
     test "includes known exports" do
       {:ok, exports} = BeamFile.read_exports(@test_beam_path)
-      names_arities = Enum.map(exports, fn
-        {n, a, _} -> {n, a}
-        {n, a} -> {n, a}
-      end)
+
+      names_arities =
+        Enum.map(exports, fn
+          {n, a, _} -> {n, a}
+          {n, a} -> {n, a}
+        end)
 
       assert {:map, 2} in names_arities
       assert {:filter, 2} in names_arities

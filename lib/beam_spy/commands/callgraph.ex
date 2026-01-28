@@ -83,7 +83,8 @@ defmodule BeamSpy.Commands.Callgraph do
   end
 
   # Extract call target from an instruction
-  defp extract_call_target({:call, _arity, {:f, _label}}), do: nil  # Need label resolution
+  # Need label resolution
+  defp extract_call_target({:call, _arity, {:f, _label}}), do: nil
 
   defp extract_call_target({:call_ext, _arity, {:extfunc, mod, name, arity}}) do
     {:external, mod, name, arity}
@@ -97,10 +98,14 @@ defmodule BeamSpy.Commands.Callgraph do
     {:external, mod, name, arity}
   end
 
-  defp extract_call_target({:call_fun, _arity}), do: nil  # Dynamic call
-  defp extract_call_target({:call_fun2, _, _, _}), do: nil  # Dynamic call
-  defp extract_call_target({:apply, _}), do: nil  # Dynamic call
-  defp extract_call_target({:apply_last, _, _}), do: nil  # Dynamic call
+  # Dynamic call
+  defp extract_call_target({:call_fun, _arity}), do: nil
+  # Dynamic call
+  defp extract_call_target({:call_fun2, _, _, _}), do: nil
+  # Dynamic call
+  defp extract_call_target({:apply, _}), do: nil
+  # Dynamic call
+  defp extract_call_target({:apply_last, _, _}), do: nil
 
   defp extract_call_target({:bif0, {:extfunc, mod, name, arity}, _}) do
     {:external, mod, name, arity}
