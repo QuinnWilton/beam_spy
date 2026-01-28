@@ -14,12 +14,27 @@ defmodule BeamSpy.CLI do
 
   alias BeamSpy.Resolver
   alias BeamSpy.Theme
+  alias BeamSpy.Pager
   alias BeamSpy.Commands.{Atoms, Exports, Imports, Info, Chunks, Disasm, Callgraph}
 
   @doc """
-  Main entry point for the CLI.
+  Main entry point for the CLI (escript entry point).
+
+  Runs the CLI and halts with the appropriate exit code.
   """
+  @spec main([String.t()]) :: no_return()
   def main(argv) do
+    System.halt(run(argv))
+  end
+
+  @doc """
+  Runs the CLI and returns the exit code.
+
+  Use this function for testing instead of `main/1`.
+  Returns 0 for success, non-zero for errors.
+  """
+  @spec run([String.t()]) :: non_neg_integer()
+  def run(argv) do
     opt = optimus()
     argv = normalize_help_args(argv)
 
@@ -63,7 +78,14 @@ defmodule BeamSpy.CLI do
   defp optimus do
     Optimus.new!(
       name: "beam_spy",
-      description: "BEAM file analysis tool",
+      description: """
+      BEAM file analysis tool.
+
+      Examples:
+        beam_spy atoms Enum --format=json
+        beam_spy exports lists --filter=map
+        beam_spy disasm MyMod -f "handle_*"
+      """,
       version: BeamSpy.version(),
       allow_unknown_args: false,
       parse_double_dash: true,
@@ -80,6 +102,12 @@ defmodule BeamSpy.CLI do
           help: "Color theme to use",
           parser: :string,
           default: "default"
+        ],
+        paging: [
+          long: "--paging",
+          help: "Paging mode: auto, always, never (default: auto)",
+          parser: :string,
+          default: "auto"
         ]
       ],
       subcommands: [
@@ -101,12 +129,7 @@ defmodule BeamSpy.CLI do
       name: "atoms",
       about: "Extract atom table from a BEAM file",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: format_option(),
@@ -120,12 +143,7 @@ defmodule BeamSpy.CLI do
       name: "exports",
       about: "List exported functions from a BEAM file",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: format_option(),
@@ -145,12 +163,7 @@ defmodule BeamSpy.CLI do
       name: "imports",
       about: "List imported functions from a BEAM file",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: format_option(),
@@ -171,12 +184,7 @@ defmodule BeamSpy.CLI do
       name: "info",
       about: "Show module metadata from a BEAM file",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: format_option()
@@ -189,12 +197,7 @@ defmodule BeamSpy.CLI do
       name: "chunks",
       about: "List BEAM file chunks",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: format_option(),
@@ -213,12 +216,7 @@ defmodule BeamSpy.CLI do
       name: "disasm",
       about: "Disassemble BEAM bytecode",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: format_option(),
@@ -244,16 +242,12 @@ defmodule BeamSpy.CLI do
       name: "callgraph",
       about: "Build function call graph",
       args: [
-        file: [
-          value_name: "FILE",
-          help: "BEAM file or module name",
-          required: true,
-          parser: :string
-        ]
+        file: file_argument()
       ],
       options: [
         format: [
           long: "--format",
+          short: "-o",
           help: "Output format: text, json, dot",
           parser: :string,
           default: "text"
@@ -262,11 +256,21 @@ defmodule BeamSpy.CLI do
     ]
   end
 
-  # Common options
+  # Common arguments and options
+
+  defp file_argument do
+    [
+      value_name: "FILE",
+      help: "BEAM file path or module name (Enum, lists, ./mod.beam)",
+      required: true,
+      parser: :string
+    ]
+  end
 
   defp format_option do
     [
       long: "--format",
+      short: "-o",
       help: "Output format: text, json",
       parser: :string,
       default: "text"
@@ -276,7 +280,8 @@ defmodule BeamSpy.CLI do
   defp filter_option do
     [
       long: "--filter",
-      help: "Filter pattern (substring match)",
+      short: "-F",
+      help: "Filter pattern (prefix with re: for regex, glob: for glob)",
       parser: :string
     ]
   end
@@ -318,56 +323,98 @@ defmodule BeamSpy.CLI do
   # Command runners
 
   defp run_atoms(parsed) do
-    with {:ok, path} <- resolve_file(parsed) do
-      opts = build_opts(parsed, [:format, :filter])
-      output = Atoms.run(path, opts)
-      IO.puts(output)
+    with {:ok, path} <- resolve_file(parsed),
+         opts = build_opts(parsed, [:format, :filter]),
+         {:ok, output} <- Atoms.run(path, opts) do
+      output_with_paging(output, parsed)
       0
+    else
+      {:error, msg} when is_binary(msg) ->
+        IO.puts(:stderr, msg)
+        1
+
+      {:error, code} when is_integer(code) ->
+        code
     end
   end
 
   defp run_exports(parsed) do
-    with {:ok, path} <- resolve_file(parsed) do
-      opts = build_opts(parsed, [:format, :filter, :plain])
-      output = Exports.run(path, opts)
-      IO.puts(output)
+    with {:ok, path} <- resolve_file(parsed),
+         opts = build_opts(parsed, [:format, :filter, :plain]),
+         {:ok, output} <- Exports.run(path, opts) do
+      output_with_paging(output, parsed)
       0
+    else
+      {:error, msg} when is_binary(msg) ->
+        IO.puts(:stderr, msg)
+        1
+
+      {:error, code} when is_integer(code) ->
+        code
     end
   end
 
   defp run_imports(parsed) do
-    with {:ok, path} <- resolve_file(parsed) do
-      opts = build_opts(parsed, [:format, :filter, :group])
-      output = Imports.run(path, opts)
-      IO.puts(output)
+    with {:ok, path} <- resolve_file(parsed),
+         opts = build_opts(parsed, [:format, :filter, :group]),
+         {:ok, output} <- Imports.run(path, opts) do
+      output_with_paging(output, parsed)
       0
+    else
+      {:error, msg} when is_binary(msg) ->
+        IO.puts(:stderr, msg)
+        1
+
+      {:error, code} when is_integer(code) ->
+        code
     end
   end
 
   defp run_info(parsed) do
-    with {:ok, path} <- resolve_file(parsed) do
-      opts = build_opts(parsed, [:format])
-      output = Info.run(path, opts)
-      IO.puts(output)
+    with {:ok, path} <- resolve_file(parsed),
+         opts = build_opts(parsed, [:format]),
+         {:ok, output} <- Info.run(path, opts) do
+      output_with_paging(output, parsed)
       0
+    else
+      {:error, msg} when is_binary(msg) ->
+        IO.puts(:stderr, msg)
+        1
+
+      {:error, code} when is_integer(code) ->
+        code
     end
   end
 
   defp run_chunks(parsed) do
-    with {:ok, path} <- resolve_file(parsed) do
-      opts = build_opts(parsed, [:format, :raw])
-      output = Chunks.run(path, opts)
-      IO.puts(output)
+    with {:ok, path} <- resolve_file(parsed),
+         opts = build_opts(parsed, [:format, :raw]),
+         {:ok, output} <- Chunks.run(path, opts) do
+      output_with_paging(output, parsed)
       0
+    else
+      {:error, msg} when is_binary(msg) ->
+        IO.puts(:stderr, msg)
+        1
+
+      {:error, code} when is_integer(code) ->
+        code
     end
   end
 
   defp run_disasm(parsed) do
-    with {:ok, path} <- resolve_file(parsed) do
-      opts = build_opts(parsed, [:format, :function, :source])
-      output = Disasm.run(path, opts)
-      IO.puts(output)
+    with {:ok, path} <- resolve_file(parsed),
+         opts = build_opts(parsed, [:format, :function, :source]),
+         {:ok, output} <- Disasm.run(path, opts) do
+      output_with_paging(output, parsed)
       0
+    else
+      {:error, msg} when is_binary(msg) ->
+        IO.puts(:stderr, msg)
+        1
+
+      {:error, code} when is_integer(code) ->
+        code
     end
   end
 
@@ -382,9 +429,30 @@ defmodule BeamSpy.CLI do
           _ -> opts
         end
 
-      output = Callgraph.run(path, opts)
-      IO.puts(output)
-      0
+      case Callgraph.run(path, opts) do
+        {:ok, output} ->
+          output_with_paging(output, parsed)
+          0
+
+        {:error, msg} ->
+          IO.puts(:stderr, msg)
+          1
+      end
+    else
+      {:error, code} when is_integer(code) -> code
+    end
+  end
+
+  defp output_with_paging(output, parsed) do
+    paging_mode = paging_mode(parsed)
+    Pager.maybe_page(output, paging: paging_mode)
+  end
+
+  defp paging_mode(parsed) do
+    case get_option(parsed, :paging) do
+      "always" -> :always
+      "never" -> :never
+      _ -> :auto
     end
   end
 
@@ -426,8 +494,15 @@ defmodule BeamSpy.CLI do
 
     theme =
       case Theme.load(theme_name) do
-        {:ok, t} -> t
-        {:error, _} -> Theme.default()
+        {:ok, t} ->
+          t
+
+        {:error, _} when theme_name != "default" ->
+          IO.puts(:stderr, "Warning: theme '#{theme_name}' not found, using default")
+          Theme.default()
+
+        {:error, _} ->
+          Theme.default()
       end
 
     Keyword.put(opts, :theme, theme)
