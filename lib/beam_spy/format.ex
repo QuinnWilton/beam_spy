@@ -116,6 +116,26 @@ defmodule BeamSpy.Format do
 
   def format_value(value), do: inspect(value)
 
+  @doc """
+  Formats a BEAM file error for user-friendly output.
+  """
+  @spec format_beam_error(term()) :: String.t()
+  def format_beam_error(:not_a_beam_file), do: "Error: Not a valid BEAM file"
+  def format_beam_error({:file_error, reason}), do: "Error: #{:file.format_error(reason)}"
+  def format_beam_error({:missing_chunk, id}), do: "Error: Chunk '#{id}' not found"
+  def format_beam_error(reason), do: "Error: #{inspect(reason)}"
+
+  @doc """
+  Formats a module name for display, stripping "Elixir." prefix.
+  """
+  @spec format_module_name(atom()) :: String.t()
+  def format_module_name(mod) when is_atom(mod) do
+    case Atom.to_string(mod) do
+      "Elixir." <> rest -> rest
+      other -> other
+    end
+  end
+
   defp add_thousand_separators(num_str) do
     num_str
     |> String.reverse()
