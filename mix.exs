@@ -12,6 +12,7 @@ defmodule BeamSpy.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       escript: escript(),
+      releases: releases(),
       aliases: aliases(),
 
       # Hex
@@ -45,9 +46,29 @@ defmodule BeamSpy.MixProject do
       # Table formatting
       {:table_rex, "~> 4.0"},
 
+      # Binary distribution
+      {:burrito, "~> 1.0"},
+
       # Dev/Test dependencies
       {:stream_data, "~> 1.0", only: [:test, :dev]},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false}
+    ]
+  end
+
+  defp releases do
+    [
+      beam_spy: [
+        steps: [:assemble, &Burrito.wrap/1],
+        burrito: [
+          targets: [
+            macos_arm64: [os: :darwin, cpu: :aarch64],
+            macos_x86_64: [os: :darwin, cpu: :x86_64],
+            linux_x86_64: [os: :linux, cpu: :x86_64],
+            linux_arm64: [os: :linux, cpu: :aarch64],
+            windows_x86_64: [os: :windows, cpu: :x86_64]
+          ]
+        ]
+      ]
     ]
   end
 
