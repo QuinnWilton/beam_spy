@@ -9,6 +9,8 @@ defmodule BeamSpy.SourceTest do
   @elixir_beam_path :code.which(Enum) |> to_string()
   # Use a known Erlang module
   @erlang_beam_path :code.which(:lists) |> to_string()
+  # Use maps module for additional Erlang testing
+  @maps_beam_path :code.which(:maps) |> to_string()
 
   describe "load_source/1" do
     test "loads source from Elixir module with debug info" do
@@ -18,7 +20,10 @@ defmodule BeamSpy.SourceTest do
 
       # Should either succeed with source or try to reconstruct
       case result do
-        {:ok, lines} ->
+        {:ok, lines, {:file, _path}} ->
+          assert is_map(lines)
+
+        {:ok, lines, :reconstructed} ->
           assert is_map(lines)
 
         {:error, _} ->
@@ -32,7 +37,10 @@ defmodule BeamSpy.SourceTest do
 
       # Erlang stdlib might not have accessible source
       case result do
-        {:ok, lines} ->
+        {:ok, lines, {:file, _path}} ->
+          assert is_map(lines)
+
+        {:ok, lines, :reconstructed} ->
           assert is_map(lines)
 
         {:error, _} ->
@@ -54,8 +62,9 @@ defmodule BeamSpy.SourceTest do
       end
       """)
 
-      {:ok, lines} = Source.load_source(@erlang_beam_path, source_path: tmp_path)
+      {:ok, lines, source_type} = Source.load_source(@erlang_beam_path, source_path: tmp_path)
       assert Map.get(lines, 1) =~ "defmodule"
+      assert {:file, ^tmp_path} = source_type
 
       File.rm!(tmp_path)
     end
@@ -153,9 +162,12 @@ defmodule BeamSpy.SourceTest do
       result = Source.load_source("test/fixtures/beam/simple.beam")
 
       case result do
-        {:ok, lines} ->
+        {:ok, lines, {:file, _path}} ->
           assert is_map(lines)
-          # Should have some content
+          assert map_size(lines) >= 0
+
+        {:ok, lines, :reconstructed} ->
+          assert is_map(lines)
           assert map_size(lines) >= 0
 
         {:error, _} ->
@@ -167,6 +179,235 @@ defmodule BeamSpy.SourceTest do
     test "returns error for stripped module without debug info" do
       result = Source.load_source("test/fixtures/beam/no_debug_info.beam")
       assert {:error, :no_debug_info} = result
+    end
+  end
+
+  describe "Erlang source reconstruction" do
+    test "loads reconstructed source from Erlang stdlib" do
+      result = Source.load_source(@erlang_beam_path)
+
+      case result do
+        {:ok, lines, :reconstructed} ->
+          assert is_map(lines)
+          assert map_size(lines) > 0
+
+          # Should have module declaration
+          module_lines = Enum.filter(lines, fn {_, text} -> text =~ "-module" end)
+          assert length(module_lines) > 0
+
+        {:error, reason} ->
+          # Some Erlang versions might not have debug info
+          assert reason in [:no_debug_info, :unknown_debug_format]
+      end
+    end
+
+    test "reconstructed Erlang source has function definitions" do
+      case Source.load_source(@erlang_beam_path) do
+        {:ok, lines, :reconstructed} ->
+          # Should have function definitions in name/arity: format
+          func_lines = Enum.filter(lines, fn {_, text} -> text =~ ~r/\w+\/\d+:/ end)
+          assert length(func_lines) > 0
+
+          # Should include common functions like map, foldl, etc.
+          all_text = lines |> Map.values() |> Enum.join("\n")
+          assert all_text =~ "map/2:" or all_text =~ "foldl/3:"
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "reconstructed Erlang source has readable argument patterns" do
+      case Source.load_source(@erlang_beam_path) do
+        {:ok, lines, :reconstructed} ->
+          all_text = lines |> Map.values() |> Enum.join("\n")
+
+          # Should have variable names, not raw AST
+          # Erlang uses capitalized variable names
+          assert all_text =~ ~r/[A-Z][a-zA-Z0-9_]*/
+
+          # Should NOT have raw AST tuples like {:var, ...}
+          refute all_text =~ "{:var,"
+          refute all_text =~ "{:atom,"
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "reconstructed source formats list patterns correctly" do
+      case Source.load_source(@erlang_beam_path) do
+        {:ok, lines, :reconstructed} ->
+          all_text = lines |> Map.values() |> Enum.join("\n")
+
+          # If there are list patterns, they should use [H | T] syntax
+          if all_text =~ "|" do
+            assert all_text =~ ~r/\[.*\|.*\]/
+          end
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "loads source from maps module (another Erlang stdlib)" do
+      result = Source.load_source(@maps_beam_path)
+
+      case result do
+        {:ok, lines, :reconstructed} ->
+          assert is_map(lines)
+          all_text = lines |> Map.values() |> Enum.join("\n")
+
+          # maps module should have functions like fold, map, etc.
+          assert all_text =~ ~r/(fold|map|filter)\/\d+:/
+
+        {:error, _} ->
+          :ok
+      end
+    end
+  end
+
+  describe "source type tracking" do
+    test "returns {:file, path} for real source files" do
+      # Create a temp file
+      tmp_path = Path.join(System.tmp_dir!(), "test_source_type.ex")
+
+      File.write!(tmp_path, """
+      defmodule TestSourceType do
+        def foo, do: :ok
+      end
+      """)
+
+      {:ok, _lines, source_type} = Source.load_source(@erlang_beam_path, source_path: tmp_path)
+      assert {:file, ^tmp_path} = source_type
+
+      File.rm!(tmp_path)
+    end
+
+    test "returns :reconstructed for debug info source" do
+      case Source.load_source(@elixir_beam_path) do
+        {:ok, _lines, source_type} ->
+          # Should be either :reconstructed or {:file, path}
+          assert source_type == :reconstructed or match?({:file, _}, source_type)
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "Erlang modules use :reconstructed type" do
+      case Source.load_source(@erlang_beam_path) do
+        {:ok, _lines, source_type} ->
+          # Erlang stdlib should be reconstructed (no source files shipped)
+          assert source_type == :reconstructed
+
+        {:error, _} ->
+          :ok
+      end
+    end
+  end
+
+  describe "line table parsing" do
+    test "parses line table from Elixir module" do
+      result = Source.parse_line_table(@elixir_beam_path)
+
+      case result do
+        {:ok, table} ->
+          assert is_map(table)
+          # Line table maps indices to line numbers
+          for {idx, line} <- table do
+            assert is_integer(idx)
+            assert is_integer(line)
+            assert idx >= 0
+            assert line >= 0
+          end
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "parses line table from Erlang module" do
+      result = Source.parse_line_table(@erlang_beam_path)
+
+      case result do
+        {:ok, table} ->
+          assert is_map(table)
+          assert map_size(table) > 0
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "line table indices are zero-based" do
+      case Source.parse_line_table(@elixir_beam_path) do
+        {:ok, table} ->
+          indices = Map.keys(table)
+          # Should have index 0 or start from a low number
+          min_idx = Enum.min(indices)
+          assert min_idx >= 0 and min_idx < 10
+
+        {:error, _} ->
+          :ok
+      end
+    end
+  end
+
+  describe "group_by_line with line table" do
+    test "resolves line indices using line table" do
+      # Create instructions with line indices
+      instructions = [
+        {:line, 0},
+        {:move, {:atom, :ok}, {:x, 0}},
+        {:line, 1},
+        {:return}
+      ]
+
+      # Line table maps indices to actual line numbers
+      line_table = %{0 => 100, 1 => 105}
+
+      groups = Source.group_by_line(instructions, line_table)
+
+      # Should use actual line numbers from table
+      line_numbers = Enum.map(groups, fn {line, _} -> line end) |> Enum.reject(&is_nil/1)
+      assert 100 in line_numbers
+      assert 105 in line_numbers
+    end
+
+    test "falls back to index when not in line table" do
+      instructions = [
+        {:line, 42},
+        {:return}
+      ]
+
+      # Empty line table
+      line_table = %{}
+
+      groups = Source.group_by_line(instructions, line_table)
+
+      # Should use the raw index as line number
+      [{line, _}] = groups
+      assert line == 42
+    end
+
+    test "handles mixed resolved and unresolved indices" do
+      instructions = [
+        {:line, 0},
+        {:move, {:atom, :a}, {:x, 0}},
+        {:line, 5},
+        {:return}
+      ]
+
+      # Only some indices in table
+      line_table = %{0 => 100}
+
+      groups = Source.group_by_line(instructions, line_table)
+      line_numbers = Enum.map(groups, fn {line, _} -> line end) |> Enum.reject(&is_nil/1)
+
+      # Index 0 -> 100, Index 5 -> 5 (fallback)
+      assert 100 in line_numbers
+      assert 5 in line_numbers
     end
   end
 
@@ -243,6 +484,143 @@ defmodule BeamSpy.SourceTest do
             :ok
         end
       end
+    end
+
+    property "line table resolution is consistent" do
+      check all(
+              num_indices <- integer(1..20),
+              base_line <- integer(1..1000),
+              offsets <- list_of(integer(0..100), length: num_indices)
+            ) do
+        # Build a line table
+        line_table =
+          offsets
+          |> Enum.with_index()
+          |> Map.new(fn {offset, idx} -> {idx, base_line + offset} end)
+
+        # Build instructions using those indices
+        instructions =
+          0..(num_indices - 1)
+          |> Enum.flat_map(fn idx ->
+            [{:line, idx}, {:return}]
+          end)
+
+        groups = Source.group_by_line(instructions, line_table)
+        result_lines = Enum.map(groups, fn {line, _} -> line end) |> Enum.reject(&is_nil/1)
+
+        # Each result line should be base_line + corresponding offset
+        expected_lines = Enum.map(offsets, &(base_line + &1)) |> Enum.dedup()
+        assert result_lines == expected_lines
+      end
+    end
+  end
+
+  describe "Erlang AST pretty printing edge cases" do
+    # These tests verify the erl_pp_form function handles various AST nodes
+
+    test "load_source handles empty module gracefully" do
+      # We can't easily create an empty module, but we can verify
+      # the error handling works for malformed paths
+      result = Source.load_source("/completely/fake/path.beam")
+      assert {:error, _} = result
+    end
+
+    test "Erlang source reconstruction handles multiple function clauses" do
+      case Source.load_source(@erlang_beam_path) do
+        {:ok, lines, :reconstructed} ->
+          all_text = lines |> Map.values() |> Enum.join("\n")
+
+          # Functions with multiple clauses should show semicolons
+          # e.g., "foldl/3: foldl(...) -> ...; foldl(...) -> ..."
+          if all_text =~ "foldl/3:" do
+            # foldl has multiple clauses
+            foldl_line = Enum.find(lines, fn {_, text} -> text =~ "foldl/3:" end)
+
+            if foldl_line do
+              {_, text} = foldl_line
+              # Multiple clauses are separated by semicolons
+              assert text =~ ";" or text =~ "->"
+            end
+          end
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "handles modules with map patterns" do
+      # maps module uses map patterns extensively
+      case Source.load_source(@maps_beam_path) do
+        {:ok, lines, :reconstructed} ->
+          # Should not crash
+          assert is_map(lines)
+
+        {:error, _} ->
+          :ok
+      end
+    end
+  end
+
+  describe "integration tests with real modules" do
+    test "can load and group instructions for GenServer" do
+      beam_path = :code.which(GenServer) |> to_string()
+
+      case Source.load_source(beam_path) do
+        {:ok, lines, source_type} ->
+          assert is_map(lines)
+          assert source_type == :reconstructed or match?({:file, _}, source_type)
+
+          # Load line table
+          case Source.parse_line_table(beam_path) do
+            {:ok, line_table} ->
+              {:ok, result} = BeamSpy.Commands.Disasm.extract(beam_path, function: "call/3")
+
+              case result.functions do
+                [func | _] ->
+                  groups = Source.group_by_line(func.raw_instructions, line_table)
+                  assert length(groups) > 0
+
+                [] ->
+                  :ok
+              end
+
+            {:error, _} ->
+              :ok
+          end
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "can load and group instructions for :ets (Erlang)" do
+      beam_path = :code.which(:ets) |> to_string()
+
+      case Source.load_source(beam_path) do
+        {:ok, lines, :reconstructed} ->
+          assert is_map(lines)
+
+          {:ok, result} = BeamSpy.Commands.Disasm.extract(beam_path, function: "lookup/2")
+
+          case result.functions do
+            [func | _] ->
+              groups = Source.group_by_line(func.raw_instructions)
+              assert is_list(groups)
+
+            [] ->
+              :ok
+          end
+
+        {:error, _} ->
+          # Some modules might not have debug info
+          :ok
+      end
+    end
+
+    test "handles modules with no debug info" do
+      # Test fixture without debug info
+      result = Source.load_source("test/fixtures/beam/no_debug_info.beam")
+      assert {:error, :no_debug_info} = result
     end
   end
 end
