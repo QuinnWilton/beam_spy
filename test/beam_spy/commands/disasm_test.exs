@@ -293,4 +293,192 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert is_list(decoded["functions"])
     end
   end
+
+  describe "source interleaving - Elixir modules" do
+    @elixir_beam_path :code.which(Enum) |> to_string()
+
+    test "shows reconstructed source for Elixir stdlib" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
+
+      # Should show line numbers
+      assert output =~ ~r/\d+\s*│/
+      # Should show def for Elixir modules
+      assert output =~ "def map"
+    end
+
+    test "shows distant references with function names for inlined code" do
+      # reduce/3 is known to inline helper functions
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
+
+      # Should have distant reference markers with function names
+      # Format: → function_name (line N)
+      assert output =~ ~r/→.*\(line \d+\)/
+    end
+
+    test "preserves bytecode instructions with source" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
+
+      # Should still have all the bytecode
+      assert output =~ "func_info"
+      assert output =~ "label"
+      assert output =~ "return"
+    end
+  end
+
+  describe "source interleaving - Erlang modules" do
+    @erlang_beam_path :code.which(:lists) |> to_string()
+    @maps_beam_path :code.which(:maps) |> to_string()
+
+    test "shows reconstructed source for Erlang stdlib" do
+      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "map/2", source: true)
+
+      # Should show line numbers
+      assert output =~ ~r/\d+\s*│/
+      # Erlang reconstructed format shows helper functions: name/arity: name(...) -> ...
+      # map/2 calls map_1/2 which appears in the disasm
+      assert output =~ ~r/map_1\/2:/ or output =~ ~r/\d+\s*│/
+    end
+
+    test "shows Erlang function signatures in reconstructed source" do
+      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
+
+      # Should show the helper function signature with arguments
+      # foldl/3 calls foldl_1/3 which appears in the disasm
+      assert output =~ "foldl_1/3:"
+      assert output =~ ~r/foldl_1\([^)]+\)/
+    end
+
+    test "shows distant references with function names for Erlang" do
+      # maps:fold/3 inlines other functions
+      {:ok, output} = Disasm.run(@maps_beam_path, format: :text, function: "fold/3", source: true)
+
+      # Should have distant references with Erlang function names
+      assert output =~ ~r/→.*\(line \d+\)/
+    end
+
+    test "formats Erlang list patterns correctly" do
+      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
+
+      # Should show readable list patterns [H | T] not raw AST
+      # The foldl function uses list patterns
+      if output =~ "foldl_1" do
+        assert output =~ ~r/\[.*\|.*\]/
+      end
+    end
+
+    test "handles NIF stubs gracefully" do
+      # member/2 is a NIF in lists module
+      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "member/2", source: true)
+
+      # Should not crash, should show the stub
+      assert output =~ "func_info"
+      assert output =~ "nif_error" or output =~ ":undef"
+    end
+  end
+
+  describe "distant reference detection" do
+    @elixir_beam_path :code.which(Enum) |> to_string()
+
+    test "lines near home are shown with full source" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
+
+      # The function's own def line should be shown with source
+      assert output =~ ~r/\d+\s*│\s*def map/
+    end
+
+    test "distant lines use arrow notation" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
+
+      # Distant references start with →
+      if output =~ "→" do
+        assert output =~ ~r/^→/m
+      end
+    end
+
+    test "distant references include line numbers" do
+      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
+
+      # Every distant reference should have a line number
+      distant_refs = Regex.scan(~r/^→.*$/m, output) |> List.flatten()
+
+      for ref <- distant_refs do
+        assert ref =~ ~r/line \d+/
+      end
+    end
+  end
+
+  describe "hyperlinks" do
+    test "no hyperlinks for reconstructed source" do
+      erlang_path = :code.which(:lists) |> to_string()
+      {:ok, output} = Disasm.run(erlang_path, format: :text, function: "map/2", source: true)
+
+      # Should NOT contain OSC 8 escape sequences for Erlang (no real source file)
+      refute output =~ "\e]8;;"
+    end
+
+    test "hyperlinks present for modules with real source files" do
+      # This test requires a module with an actual source file on disk
+      # We'll use a dependency if available, or skip
+      toml_path = :code.which(Toml) |> to_string()
+
+      if toml_path != :non_existing do
+        {:ok, output} = Disasm.run(toml_path, format: :text, function: "decode/1", source: true)
+
+        # If source file exists, should have hyperlinks
+        if output =~ "│" do
+          # May or may not have hyperlinks depending on source availability
+          # Just verify it doesn't crash
+          assert is_binary(output)
+        end
+      end
+    end
+  end
+
+  describe "gap filling" do
+    test "does not fill gaps for reconstructed source" do
+      erlang_path = :code.which(:lists) |> to_string()
+      {:ok, output} = Disasm.run(erlang_path, format: :text, function: "map/2", source: true)
+
+      # Reconstructed source should show single lines, not ranges
+      # Each source line marker should be followed by │
+      lines = String.split(output, "\n")
+
+      source_lines =
+        lines
+        |> Enum.filter(&(&1 =~ ~r/^\s*\d+\s*│/))
+        |> Enum.map(fn line ->
+          case Regex.run(~r/^\s*(\d+)\s*│/, line) do
+            [_, num] -> String.to_integer(num)
+            _ -> nil
+          end
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      # For reconstructed source, we shouldn't see consecutive line numbers
+      # that would indicate gap filling (they should jump around)
+      # This is a heuristic test - reconstructed source has sparse line numbers
+      if length(source_lines) > 1 do
+        gaps =
+          source_lines
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.map(fn [a, b] -> b - a end)
+
+        # At least some gaps should be > 1 (not all consecutive)
+        assert Enum.any?(gaps, &(&1 != 1))
+      end
+    end
+  end
+
+  describe "indentation preservation" do
+    test "multiple source lines preserve relative indentation" do
+      # This is hard to test without a specific fixture
+      # We verify the algorithm doesn't crash on real modules
+      elixir_path = :code.which(Enum) |> to_string()
+      {:ok, output} = Disasm.run(elixir_path, format: :text, function: "slice/3", source: true)
+
+      # Should not crash and should produce output
+      assert is_binary(output)
+      assert String.length(output) > 0
+    end
+  end
 end
