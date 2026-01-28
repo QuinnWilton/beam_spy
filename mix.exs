@@ -10,10 +10,13 @@ defmodule BeamSpy.MixProject do
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      compilers: [:gleam] ++ Mix.compilers(),
       deps: deps(),
       escript: escript(),
       releases: releases(),
       aliases: aliases(),
+      erlc_paths: ["src"],
+      erlc_include_path: "src",
 
       # Test
       test_ignore_filters: [~r{test/fixtures/}, ~r{test/support/}],
@@ -56,7 +59,11 @@ defmodule BeamSpy.MixProject do
       # Dev/Test dependencies
       {:stream_data, "~> 1.0", only: [:test, :dev]},
       {:mneme, "~> 0.10", only: [:test, :dev]},
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+
+      # Test fixtures for other BEAM languages
+      {:mix_gleam, "~> 0.6", only: :test, runtime: false},
+      {:gleam_stdlib, "~> 0.68", only: :test, runtime: false, app: false}
     ]
   end
 

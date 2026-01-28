@@ -38,3 +38,4 @@ beam_spy-*.tar
 # OS files
 .DS_Store
 Thumbs.db
+build/

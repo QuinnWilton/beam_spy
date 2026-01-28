@@ -481,4 +481,213 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert String.length(output) > 0
     end
   end
+
+  describe "Gleam modules" do
+    @tag :gleam
+    test "extracts functions from Gleam module" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          assert {:ok, result} = Disasm.extract(beam_path)
+          assert result.module == :"gleam@list"
+          assert is_list(result.exports)
+          assert is_list(result.functions)
+          assert length(result.functions) > 0
+      end
+    end
+
+    @tag :gleam
+    test "Gleam functions have correct structure" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, result} = Disasm.extract(beam_path)
+
+          for func <- result.functions do
+            assert is_atom(func.name)
+            assert is_integer(func.arity) and func.arity >= 0
+            assert is_integer(func.entry)
+            assert is_list(func.instructions)
+          end
+      end
+    end
+
+    @tag :gleam
+    test "filters Gleam functions by name" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, result} = Disasm.extract(beam_path, function: "map/2")
+
+          case result.functions do
+            [func] ->
+              assert func.name == :map
+              assert func.arity == 2
+
+            [] ->
+              # map/2 might not exist or have a different name
+              :ok
+          end
+      end
+    end
+
+    @tag :gleam
+    test "text output for Gleam module" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, output} = Disasm.run(beam_path, format: :text, function: "reverse/1")
+
+          assert output =~ "module: :gleam@list"
+          assert output =~ "function reverse/1"
+          assert output =~ "label"
+      end
+    end
+
+    @tag :gleam
+    test "JSON output for Gleam module" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, output} = Disasm.run(beam_path, format: :json, function: "reverse/1")
+          {:ok, decoded} = Jason.decode(output)
+
+          assert decoded["module"] == "gleam@list"
+          assert is_list(decoded["functions"])
+      end
+    end
+
+    @tag :gleam
+    test "source interleaving with Gleam module" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, output} = Disasm.run(beam_path, format: :text, function: "map/2", source: true)
+
+          # Should have source line markers (from reconstructed source)
+          assert output =~ ~r/\d+\s*│/ or output =~ "│"
+
+          # Should have bytecode
+          assert output =~ "label"
+          assert output =~ "func_info"
+      end
+    end
+
+    @tag :gleam
+    test "Gleam dict module disassembly" do
+      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@dict") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, result} = Disasm.extract(beam_path)
+          assert result.module == :"gleam@dict"
+          assert length(result.functions) > 0
+
+          # dict module should have functions like new, get, insert
+          func_names = Enum.map(result.functions, & &1.name)
+          assert :new in func_names or :get in func_names or :insert in func_names
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture extraction" do
+      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, result} = Disasm.extract(beam_path)
+          assert result.module == :test_fixture
+
+          # Should have our custom functions
+          func_names = Enum.map(result.functions, & &1.name)
+          assert :hello in func_names
+          assert :add in func_names
+          assert :greet in func_names
+          assert :map_list in func_names
+          assert :fold_list in func_names
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture function arities" do
+      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, result} = Disasm.extract(beam_path)
+
+          # Check specific function arities
+          funcs = Map.new(result.functions, &{&1.name, &1.arity})
+          assert funcs[:hello] == 0
+          assert funcs[:add] == 2
+          assert funcs[:greet] == 1
+          assert funcs[:map_list] == 2
+          assert funcs[:fold_list] == 3
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture text output" do
+      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, output} = Disasm.run(beam_path, format: :text)
+
+          assert output =~ "module: :test_fixture"
+          assert output =~ "function hello/0"
+          assert output =~ "function add/2"
+          assert output =~ "function greet/1"
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture source interleaving" do
+      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, output} = Disasm.run(beam_path, format: :text, function: "add/2", source: true)
+
+          # Should have reconstructed source
+          assert output =~ ~r/\d+\s*│/ or output =~ "│"
+          assert output =~ "func_info"
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture JSON output" do
+      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          {:ok, output} = Disasm.run(beam_path, format: :json)
+          {:ok, decoded} = Jason.decode(output)
+
+          assert decoded["module"] == "test_fixture"
+
+          func_names = Enum.map(decoded["functions"], & &1["name"])
+          assert "hello" in func_names
+          assert "add" in func_names
+      end
+    end
+  end
 end

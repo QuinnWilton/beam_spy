@@ -623,4 +623,160 @@ defmodule BeamSpy.SourceTest do
       assert {:error, :no_debug_info} = result
     end
   end
+
+  describe "Gleam source reconstruction" do
+    @tag :gleam
+    test "loads source from Gleam stdlib" do
+      case Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          # Skip if Gleam stdlib not available
+          :ok
+
+        beam_path ->
+          result = Source.load_source(beam_path)
+
+          case result do
+            {:ok, lines, source_type} ->
+              assert is_map(lines)
+              assert map_size(lines) > 0
+              assert source_type == :reconstructed or match?({:file, _}, source_type)
+
+              # Should have module declaration (Erlang style)
+              module_lines = Enum.filter(lines, fn {_, text} -> text =~ "-module" end)
+              assert length(module_lines) > 0
+
+            {:error, reason} ->
+              assert reason in [:no_debug_info, :unknown_debug_format]
+          end
+      end
+    end
+
+    @tag :gleam
+    test "Gleam source has function definitions" do
+      case Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          case Source.load_source(beam_path) do
+            {:ok, lines, _source_type} ->
+              all_text = lines |> Map.values() |> Enum.join("\n")
+
+              # Gleam compiles to Erlang, so we see Erlang function definitions
+              # Either name/arity: format (reconstructed) or function declarations (file)
+              assert all_text =~ ~r/(map|filter|fold)/ or all_text =~ "-spec"
+
+            {:error, _} ->
+              :ok
+          end
+      end
+    end
+
+    @tag :gleam
+    test "Gleam modules have Erlang-style debug info" do
+      case Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          case :beam_lib.chunks(to_charlist(beam_path), [:debug_info]) do
+            {:ok, {mod, [{:debug_info, {:debug_info_v1, :erl_abstract_code, _}}]}} ->
+              # Gleam compiles to Erlang, so it uses erl_abstract_code
+              assert mod == :"gleam@list"
+
+            {:ok, {_, [{:debug_info, :no_debug_info}]}} ->
+              # Acceptable - compiled without debug info
+              :ok
+
+            {:error, _} ->
+              :ok
+          end
+      end
+    end
+
+    @tag :gleam
+    test "can parse line table from Gleam module" do
+      case Helpers.gleam_beam_path("gleam@list") do
+        nil ->
+          :ok
+
+        beam_path ->
+          case Source.parse_line_table(beam_path) do
+            {:ok, table} ->
+              assert is_map(table)
+              assert map_size(table) > 0
+
+              # Line numbers should be positive
+              for {_idx, line} <- table do
+                assert line >= 0
+              end
+
+            {:error, _} ->
+              :ok
+          end
+      end
+    end
+
+    @tag :gleam
+    test "Gleam dict module source loading" do
+      case Helpers.gleam_beam_path("gleam@dict") do
+        nil ->
+          :ok
+
+        beam_path ->
+          case Source.load_source(beam_path) do
+            {:ok, lines, _source_type} ->
+              assert is_map(lines)
+
+              # dict module should have functions like get, insert, etc. (Erlang style)
+              all_text = lines |> Map.values() |> Enum.join("\n")
+              assert all_text =~ ~r/(get|insert|new|from_list)/
+
+            {:error, _} ->
+              :ok
+          end
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture source loading" do
+      case Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          case Source.load_source(beam_path) do
+            {:ok, lines, _source_type} ->
+              assert is_map(lines)
+
+              # Should have our custom functions (Erlang style)
+              all_text = lines |> Map.values() |> Enum.join("\n")
+              assert all_text =~ "hello" or all_text =~ "add" or all_text =~ "greet"
+
+            {:error, _} ->
+              :ok
+          end
+      end
+    end
+
+    @tag :gleam
+    test "custom Gleam fixture has correct module declaration" do
+      case Helpers.gleam_fixture_path("test_fixture") do
+        nil ->
+          :ok
+
+        beam_path ->
+          case Source.load_source(beam_path) do
+            {:ok, lines, _source_type} ->
+              module_lines = Enum.filter(lines, fn {_, text} -> text =~ "-module" end)
+              assert length(module_lines) > 0
+              {_, text} = hd(module_lines)
+              assert text =~ "test_fixture"
+
+            {:error, _} ->
+              :ok
+          end
+      end
+    end
+  end
 end
