@@ -1,5 +1,6 @@
 defmodule BeamSpy.ThemeTest do
   use ExUnit.Case, async: true
+  use Mneme
 
   alias BeamSpy.Theme
 
@@ -86,6 +87,48 @@ defmodule BeamSpy.ThemeTest do
       theme = Theme.default()
       result = Theme.styled_string("test", "atom", theme)
       assert is_binary(result)
+    end
+  end
+
+  describe "snapshot tests" do
+    @tag :snapshot
+    test "default theme color definitions" do
+      {:ok, theme} = Theme.load("default")
+      assert %{name: "Default", variant: :dark} = Map.take(theme, [:name, :variant])
+      assert Map.has_key?(theme.colors, "atom")
+      assert Map.has_key?(theme.colors, "opcode.call")
+    end
+
+    @tag :snapshot
+    test "monokai theme color definitions" do
+      {:ok, theme} = Theme.load("monokai")
+      assert %{name: "Monokai", variant: :dark} = Map.take(theme, [:name, :variant])
+    end
+
+    @tag :snapshot
+    test "theme list is stable" do
+      themes = Theme.list() |> Enum.sort()
+
+      assert themes == [
+               "default",
+               "default-light",
+               "dracula",
+               "monokai",
+               "nord",
+               "plain",
+               "solarized-dark",
+               "solarized-light"
+             ]
+    end
+
+    @tag :snapshot
+    test "all bundled themes load successfully" do
+      for theme_name <- Theme.list() do
+        assert {:ok, theme} = Theme.load(theme_name)
+        assert is_binary(theme.name)
+        assert theme.variant in [:dark, :light]
+        assert map_size(theme.colors) > 0
+      end
     end
   end
 end
