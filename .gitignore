@@ -22,3 +22,19 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 beam_spy-*.tar
 
+# Escript binary
+/beam_spy
+
+# Burrito builds
+/burrito_out/
+
+# Editor/IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
