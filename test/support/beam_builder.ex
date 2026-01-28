@@ -29,6 +29,8 @@ defmodule BeamSpy.Test.BeamBuilder do
     build_empty_module()
     build_single_return()
     build_nested_literal()
+    build_erlang_module()
+    build_long_function()
 
     :ok
   end
@@ -156,8 +158,21 @@ defmodule BeamSpy.Test.BeamBuilder do
   end
 
   def build_stripped_module do
-    code = "defmodule TestStripped, do: def foo, do: :ok"
-    compile_to_fixture(code, "no_debug_info.beam", nil, debug_info: false)
+    code = """
+    defmodule TestStripped do
+      def foo, do: :ok
+    end
+    """
+
+    # Compile normally first
+    [{_module, binary}] = Code.compile_string(code, "nofile")
+
+    # Strip debug info using :beam_lib
+    {:ok, {_mod, stripped}} = :beam_lib.strip(binary)
+
+    beam_path = Path.join(@fixture_dir, "no_debug_info.beam")
+    File.write!(beam_path, stripped)
+    {:ok, beam_path}
   end
 
   def build_unicode_atoms do
@@ -185,17 +200,30 @@ defmodule BeamSpy.Test.BeamBuilder do
   end
 
   def build_minimal do
-    code = "defmodule TestMinimal, do: nil"
+    code = """
+    defmodule TestMinimal do
+    end
+    """
+
     compile_to_fixture(code, "minimal.beam", nil)
   end
 
   def build_empty_module do
-    code = "defmodule TestEmpty, do: nil"
+    code = """
+    defmodule TestEmpty do
+    end
+    """
+
     compile_to_fixture(code, "empty_module.beam", nil)
   end
 
   def build_single_return do
-    code = "defmodule TestSingleReturn, do: def noop, do: nil"
+    code = """
+    defmodule TestSingleReturn do
+      def noop, do: nil
+    end
+    """
+
     compile_to_fixture(code, "single_return.beam", nil)
   end
 
@@ -210,22 +238,104 @@ defmodule BeamSpy.Test.BeamBuilder do
     compile_to_fixture(code, "nested_literal.beam", "nested_literal.ex")
   end
 
+  def build_erlang_module do
+    # Create a simple Erlang module
+    erlang_code = """
+    -module(test_erlang).
+    -export([hello/0, add/2]).
+
+    hello() -> world.
+
+    add(A, B) -> A + B.
+    """
+
+    erlang_source = Path.join(@source_dir, "test_erlang.erl")
+    File.write!(erlang_source, erlang_code)
+
+    # Compile Erlang source
+    beam_path = Path.join(@fixture_dir, "erlang_module.beam")
+
+    case :compile.file(to_charlist(erlang_source), [
+           :binary,
+           :debug_info,
+           {:outdir, to_charlist(@fixture_dir)}
+         ]) do
+      {:ok, _module, binary} ->
+        File.write!(beam_path, binary)
+        {:ok, beam_path}
+
+      {:ok, _module} ->
+        # Module was written directly by compiler
+        {:ok, beam_path}
+
+      error ->
+        {:error, error}
+    end
+  end
+
+  def build_long_function do
+    # Generate a module with a function containing many instructions
+    # This creates a function with 100+ case clauses
+    clauses =
+      Enum.map(1..100, fn n ->
+        "      #{n} -> :value_#{n}"
+      end)
+      |> Enum.join("\n")
+
+    code = """
+    defmodule TestLongFunction do
+      def lookup(n) do
+        case n do
+    #{clauses}
+          _ -> :not_found
+        end
+      end
+
+      def chain(x) do
+        x
+        |> step1()
+        |> step2()
+        |> step3()
+        |> step4()
+        |> step5()
+        |> step6()
+        |> step7()
+        |> step8()
+        |> step9()
+        |> step10()
+      end
+
+      defp step1(x), do: x + 1
+      defp step2(x), do: x * 2
+      defp step3(x), do: x - 1
+      defp step4(x), do: div(x, 2)
+      defp step5(x), do: x + 10
+      defp step6(x), do: x * 3
+      defp step7(x), do: x - 5
+      defp step8(x), do: rem(x, 100)
+      defp step9(x), do: x + 50
+      defp step10(x), do: x
+    end
+    """
+
+    compile_to_fixture(code, "long_function.beam", nil)
+  end
+
   # Helper functions
 
-  defp compile_to_fixture(code, beam_filename, source_filename, opts \\ []) do
-    debug_info = Keyword.get(opts, :debug_info, true)
-
+  defp compile_to_fixture(code, beam_filename, source_filename, _opts \\ []) do
     # Write source file if provided
-    if source_filename do
-      source_path = Path.join(@source_dir, source_filename)
-      File.write!(source_path, code)
-    end
-
-    # Compile with or without debug info
-    compiler_opts = if debug_info, do: [], else: [debug_info: false]
+    source_path =
+      if source_filename do
+        path = Path.join(@source_dir, source_filename)
+        File.write!(path, code)
+        path
+      else
+        "nofile"
+      end
 
     try do
-      [{_module, binary}] = Code.compile_string(code, compiler_opts)
+      [{_module, binary}] = Code.compile_string(code, source_path)
       beam_path = Path.join(@fixture_dir, beam_filename)
       File.write!(beam_path, binary)
       {:ok, beam_path}
