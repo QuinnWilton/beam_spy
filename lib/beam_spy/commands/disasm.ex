@@ -135,6 +135,24 @@ defmodule BeamSpy.Commands.Disasm do
     "#{inspect(m)}:#{inspect(f)}/#{a}"
   end
 
+  # Format alloc tuples compactly: {alloc, [{words, 2}, {floats, 0}, {funs, 1}]} -> alloc(w:2, fn:1)
+  defp format_arg({:alloc, props}) when is_list(props) do
+    parts =
+      props
+      |> Enum.filter(fn {_key, val} -> val != 0 end)
+      |> Enum.map(fn
+        {:words, n} -> "w:#{n}"
+        {:floats, n} -> "fl:#{n}"
+        {:funs, n} -> "fn:#{n}"
+        {key, val} -> "#{key}:#{val}"
+      end)
+
+    case parts do
+      [] -> "alloc()"
+      _ -> "alloc(#{Enum.join(parts, ", ")})"
+    end
+  end
+
   # Handle both {:list, items} from beam_disasm and raw Elixir lists
   defp format_arg({:list, items}), do: format_arg_list(items)
   defp format_arg(items) when is_list(items), do: format_arg_list(items)
