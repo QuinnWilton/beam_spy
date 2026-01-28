@@ -193,5 +193,17 @@ defmodule BeamSpy.OpcodesTest do
         assert category in Opcodes.categories()
       end
     end
+
+    property "info/1 returns consistent structure for any opcode number" do
+      check all(num <- integer(0..200)) do
+        info = Opcodes.info(num)
+        assert is_atom(info.name)
+        assert is_integer(info.arity)
+        assert is_boolean(info.deprecated)
+        # doc and args are also part of the structure
+        assert is_binary(info.doc) or is_nil(info.doc)
+        assert is_list(info.args)
+      end
+    end
   end
 end
