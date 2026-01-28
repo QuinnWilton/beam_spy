@@ -3,7 +3,7 @@ defmodule BeamSpy.Commands.Info do
   Extract and display module metadata from a BEAM file.
   """
 
-  alias BeamSpy.{BeamFile, Format}
+  alias BeamSpy.{BeamFile, Format, Theme}
 
   @doc """
   Extract module info from a BEAM file.
@@ -59,10 +59,11 @@ defmodule BeamSpy.Commands.Info do
   @spec run(String.t(), keyword()) :: String.t()
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
+    theme = Keyword.get(opts, :theme, Theme.default())
 
     case extract(path, opts) do
       {:ok, info} ->
-        format_output(info, format)
+        format_output(info, format, theme)
 
       {:error, reason} ->
         format_error(reason)
@@ -132,25 +133,31 @@ defmodule BeamSpy.Commands.Info do
     end
   end
 
-  defp format_output(info, :text) do
+  defp format_output(info, :text, theme) do
     pairs = [
-      {"Module", format_module_name(info.module)},
-      {"File", info.file || "-"},
-      {"Compile time", info.compile_time || "-"},
-      {"OTP version", info.otp_version || "-"},
-      {"Elixir vsn", info.elixir_version || "-"},
-      {"MD5", info.md5},
-      {"Size", format_size(info.size_bytes)},
-      {"Chunks", info.chunk_count},
-      {"Exports", info.export_count},
-      {"Imports", info.import_count},
-      {"Atoms", info.atom_count}
+      {"Module", format_module_name(info.module), "module"},
+      {"File", info.file || "-", "string"},
+      {"Compile time", info.compile_time || "-", "ui.value"},
+      {"OTP version", info.otp_version || "-", "ui.value"},
+      {"Elixir vsn", info.elixir_version || "-", "ui.value"},
+      {"MD5", info.md5, "ui.dim"},
+      {"Size", format_size(info.size_bytes), "number"},
+      {"Chunks", info.chunk_count, "number"},
+      {"Exports", info.export_count, "number"},
+      {"Imports", info.import_count, "number"},
+      {"Atoms", info.atom_count, "number"}
     ]
 
-    Format.key_value(pairs)
+    pairs
+    |> Enum.map(fn {key, value, element} ->
+      styled_key = Theme.styled_string(key, "ui.key", theme)
+      styled_value = Theme.styled_string(to_string(value), element, theme)
+      "#{styled_key}: #{styled_value}"
+    end)
+    |> Enum.join("\n")
   end
 
-  defp format_output(info, :json) do
+  defp format_output(info, :json, _theme) do
     %{
       module: format_module_name(info.module),
       file: info.file,

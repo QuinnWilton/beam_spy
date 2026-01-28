@@ -7,6 +7,7 @@ defmodule BeamSpy.Commands.Callgraph do
   """
 
   alias BeamSpy.Format
+  alias BeamSpy.Theme
 
   @type edge :: {String.t(), String.t()}
   @type graph :: %{nodes: [String.t()], edges: [edge()]}
@@ -139,11 +140,13 @@ defmodule BeamSpy.Commands.Callgraph do
 
   # Format output based on options
   defp format_output(graph, opts) do
+    theme = Keyword.get(opts, :theme, Theme.default())
+
     case Keyword.get(opts, :format, :text) do
       :json -> format_json(graph)
       :dot -> format_dot(graph)
-      :text -> format_text(graph)
-      _ -> format_text(graph)
+      :text -> format_text(graph, theme)
+      _ -> format_text(graph, theme)
     end
   end
 
@@ -193,7 +196,7 @@ defmodule BeamSpy.Commands.Callgraph do
     |> String.replace("\"", "\\\"")
   end
 
-  defp format_text(graph) do
+  defp format_text(graph, theme) do
     # Group edges by caller
     by_caller =
       graph.edges
@@ -204,13 +207,22 @@ defmodule BeamSpy.Commands.Callgraph do
 
     all_callers
     |> Enum.map(fn caller ->
+      styled_caller = Theme.styled_string(caller, "function", theme)
       callees = Map.get(by_caller, caller, [])
 
       if Enum.empty?(callees) do
-        "#{caller}\n  (no calls)"
+        dim_text = Theme.styled_string("(no calls)", "ui.dim", theme)
+        "#{styled_caller}\n  #{dim_text}"
       else
-        calls = Enum.map_join(callees, "\n", fn callee -> "  → #{callee}" end)
-        "#{caller}\n#{calls}"
+        arrow = Theme.styled_string("→", "ui.arrow", theme)
+
+        calls =
+          Enum.map_join(callees, "\n", fn callee ->
+            styled_callee = Theme.styled_string(callee, "function", theme)
+            "  #{arrow} #{styled_callee}"
+          end)
+
+        "#{styled_caller}\n#{calls}"
       end
     end)
     |> Enum.join("\n\n")

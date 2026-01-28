@@ -3,7 +3,7 @@ defmodule BeamSpy.Commands.Chunks do
   List and inspect BEAM file chunks.
   """
 
-  alias BeamSpy.{BeamFile, Format}
+  alias BeamSpy.{BeamFile, Format, Theme}
 
   @doc """
   Extract chunk information from a BEAM file.
@@ -42,26 +42,31 @@ defmodule BeamSpy.Commands.Chunks do
         run_list(path, opts)
 
       chunk_id ->
-        run_raw_dump(path, chunk_id)
+        run_raw_dump(path, chunk_id, opts)
     end
   end
 
   defp run_list(path, opts) do
     format = Keyword.get(opts, :format, :text)
+    theme = Keyword.get(opts, :theme, Theme.default())
 
     case extract(path, opts) do
       {:ok, data} ->
-        format_output(data, format)
+        format_output(data, format, theme)
 
       {:error, reason} ->
         format_error(reason)
     end
   end
 
-  defp run_raw_dump(path, chunk_id) do
+  defp run_raw_dump(path, chunk_id, opts) do
+    theme = Keyword.get(opts, :theme, Theme.default())
+
     case BeamFile.read_raw_chunk(path, chunk_id) do
       {:ok, data} ->
-        header = "Chunk: #{chunk_id} (#{byte_size(data)} bytes)\n"
+        styled_id = Theme.styled_string(chunk_id, "chunk_id", theme)
+        styled_size = Theme.styled_string("#{byte_size(data)}", "number", theme)
+        header = "Chunk: #{styled_id} (#{styled_size} bytes)\n"
         header <> Format.hex_dump(data)
 
       {:error, {:missing_chunk, _}} ->
@@ -72,21 +77,27 @@ defmodule BeamSpy.Commands.Chunks do
     end
   end
 
-  defp format_output(data, :text) do
+  defp format_output(data, :text, theme) do
     rows =
       Enum.map(data.chunks, fn chunk ->
-        [chunk.id, chunk.description, format_size(chunk.size)]
+        styled_id = Theme.styled_string(chunk.id, "chunk_id", theme)
+        styled_size = Theme.styled_string(format_size(chunk.size), "number", theme)
+        [styled_id, chunk.description, styled_size]
       end)
 
-    table = Format.table(rows, ["ID", "Description", "Size"])
+    header_id = Theme.styled_string("ID", "ui.header", theme)
+    header_desc = Theme.styled_string("Description", "ui.header", theme)
+    header_size = Theme.styled_string("Size", "ui.header", theme)
+    table = Format.table(rows, [header_id, header_desc, header_size])
 
     # Add total row
-    total_line = "\nTotal: #{format_size(data.total_size)}"
+    styled_total = Theme.styled_string(format_size(data.total_size), "number", theme)
+    total_line = "\nTotal: #{styled_total}"
 
     table <> total_line
   end
 
-  defp format_output(data, :json) do
+  defp format_output(data, :json, _theme) do
     %{
       chunks:
         Enum.map(data.chunks, fn chunk ->

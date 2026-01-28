@@ -9,6 +9,7 @@ defmodule BeamSpy.Commands.Disasm do
   alias BeamSpy.Opcodes
   alias BeamSpy.Format
   alias BeamSpy.Source
+  alias BeamSpy.Theme
 
   @type function_info :: %{
           name: atom(),
@@ -226,6 +227,7 @@ defmodule BeamSpy.Commands.Disasm do
 
   defp format_text(result, opts) do
     source_lines = load_source_if_requested(result, opts)
+    theme = Keyword.get(opts, :theme, Theme.default())
 
     header = """
     module: #{inspect(result.module)}
@@ -234,7 +236,7 @@ defmodule BeamSpy.Commands.Disasm do
 
     functions =
       result.functions
-      |> Enum.map(&format_function_text(&1, source_lines))
+      |> Enum.map(&format_function_text(&1, source_lines, theme))
       |> Enum.join("\n")
 
     header <> "\n" <> functions
@@ -255,26 +257,26 @@ defmodule BeamSpy.Commands.Disasm do
     end
   end
 
-  defp format_function_text(func, source_lines) do
-    header = """
+  defp format_function_text(func, source_lines, theme) do
+    func_header = "function #{func.name}/#{func.arity} (entry: #{func.entry})"
+    styled_header = Theme.styled_string(func_header, "ui.header", theme)
+    border = Theme.styled_string(String.duplicate("─", 56), "ui.border", theme)
 
-    function #{func.name}/#{func.arity} (entry: #{func.entry})
-    #{String.duplicate("─", 56)}
-    """
+    header = "\n#{styled_header}\n#{border}\n"
 
     instructions =
       if map_size(source_lines) > 0 do
-        format_instructions_with_source(func, source_lines)
+        format_instructions_with_source(func, source_lines, theme)
       else
         func.instructions
-        |> Enum.map(&format_instruction_text/1)
+        |> Enum.map(&format_instruction_text(&1, theme))
         |> Enum.join("\n")
       end
 
     header <> instructions
   end
 
-  defp format_instructions_with_source(func, source_lines) do
+  defp format_instructions_with_source(func, source_lines, theme) do
     # Group instructions by line number
     grouped = Source.group_by_line(func.raw_instructions)
 
@@ -288,39 +290,85 @@ defmodule BeamSpy.Commands.Disasm do
         end
 
       parsed_insts = Enum.map(insts, &parse_instruction/1)
-      format_source_group(source_text, parsed_insts)
+      format_source_group(source_text, parsed_insts, theme)
     end)
     |> Enum.join("\n")
   end
 
-  defp format_source_group(nil, instructions) do
+  defp format_source_group(nil, instructions, theme) do
     instructions
-    |> Enum.map(&format_instruction_text/1)
+    |> Enum.map(&format_instruction_text(&1, theme))
     |> Enum.join("\n")
   end
 
-  defp format_source_group({line_num, source_text}, instructions) do
-    source_header = "#{String.pad_leading(to_string(line_num), 4)} │ #{source_text}"
-    separator = "     ├" <> String.duplicate("─", 50)
+  defp format_source_group({line_num, source_text}, instructions, theme) do
+    line_num_styled =
+      Theme.styled_string(String.pad_leading(to_string(line_num), 4), "ui.dim", theme)
+
+    border = Theme.styled_string("│", "ui.border", theme)
+    source_header = "#{line_num_styled} #{border} #{source_text}"
+
+    separator =
+      "     " <> Theme.styled_string("├" <> String.duplicate("─", 50), "ui.border", theme)
 
     inst_text =
       instructions
-      |> Enum.map(fn inst -> "     │ " <> String.trim_leading(format_instruction_text(inst)) end)
+      |> Enum.map(fn inst ->
+        "     " <>
+          Theme.styled_string("│", "ui.border", theme) <>
+          " " <>
+          String.trim_leading(format_instruction_text(inst, theme))
+      end)
       |> Enum.join("\n")
 
     [source_header, separator, inst_text]
     |> Enum.join("\n")
   end
 
-  defp format_instruction_text({_category, "label", [n]}) do
-    "  label #{n}:"
+  defp format_instruction_text({_category, "label", [n]}, theme) do
+    label = Theme.styled_string("label", "label", theme)
+    num = Theme.styled_string(n, "label", theme)
+    "  #{label} #{num}:"
   end
 
-  defp format_instruction_text({_category, op, []}) do
-    "  #{op}"
+  defp format_instruction_text({category, op, []}, theme) do
+    styled_op = Theme.styled_string(op, "opcode.#{category}", theme)
+    "  #{styled_op}"
   end
 
-  defp format_instruction_text({_category, op, args}) do
-    "  #{op} #{Enum.join(args, ", ")}"
+  defp format_instruction_text({category, op, args}, theme) do
+    styled_op = Theme.styled_string(op, "opcode.#{category}", theme)
+    styled_args = Enum.map(args, &style_arg(&1, theme))
+    "  #{styled_op} #{Enum.join(styled_args, ", ")}"
+  end
+
+  # Style arguments based on their type
+  defp style_arg(arg, theme) do
+    cond do
+      String.starts_with?(arg, "x(") ->
+        Theme.styled_string(arg, "register.x", theme)
+
+      String.starts_with?(arg, "y(") ->
+        Theme.styled_string(arg, "register.y", theme)
+
+      String.starts_with?(arg, "fr(") ->
+        Theme.styled_string(arg, "register.fr", theme)
+
+      String.starts_with?(arg, "f(") ->
+        Theme.styled_string(arg, "label", theme)
+
+      String.starts_with?(arg, ":") ->
+        Theme.styled_string(arg, "atom", theme)
+
+      Regex.match?(~r/^-?\d+$/, arg) ->
+        Theme.styled_string(arg, "number", theme)
+
+      String.contains?(arg, ":/") ->
+        # External function call like Enum:map/2
+        Theme.styled_string(arg, "function", theme)
+
+      true ->
+        arg
+    end
   end
 end

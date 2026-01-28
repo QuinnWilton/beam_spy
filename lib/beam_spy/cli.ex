@@ -404,7 +404,16 @@ defmodule BeamSpy.CLI do
         _ -> opts
       end
 
-    opts
+    # Load theme (from top-level --theme option)
+    theme_name = get_option(parsed, :theme) || "default"
+
+    theme =
+      case Theme.load(theme_name) do
+        {:ok, t} -> t
+        {:error, _} -> Theme.default()
+      end
+
+    Keyword.put(opts, :theme, theme)
   end
 
   defp get_option(%{options: options, flags: flags}, key) do

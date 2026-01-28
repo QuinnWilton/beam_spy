@@ -3,7 +3,7 @@ defmodule BeamSpy.Commands.Imports do
   Extract and display imported functions from a BEAM file.
   """
 
-  alias BeamSpy.{BeamFile, Filter, Format}
+  alias BeamSpy.{BeamFile, Filter, Format, Theme}
 
   @doc """
   Extract imports from a BEAM file.
@@ -43,10 +43,11 @@ defmodule BeamSpy.Commands.Imports do
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
     group = Keyword.get(opts, :group, false)
+    theme = Keyword.get(opts, :theme, Theme.default())
 
     case extract(path, opts) do
       {:ok, imports} ->
-        format_output(imports, format, group)
+        format_output(imports, format, group, theme)
 
       {:error, reason} ->
         format_error(reason)
@@ -63,16 +64,20 @@ defmodule BeamSpy.Commands.Imports do
     end)
   end
 
-  defp format_output(imports, :text, true) do
+  defp format_output(imports, :text, true, theme) do
     imports
     |> Enum.group_by(fn {mod, _, _} -> mod end)
     |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
     |> Enum.map(fn {mod, funs} ->
-      header = format_module_name(mod)
+      header = Theme.styled_string(format_module_name(mod), "module", theme)
 
       funcs =
         funs
-        |> Enum.map(fn {_, name, arity} -> "  #{name}/#{arity}" end)
+        |> Enum.map(fn {_, name, arity} ->
+          styled_name = Theme.styled_string(Atom.to_string(name), "function", theme)
+          styled_arity = Theme.styled_string(Integer.to_string(arity), "arity", theme)
+          "  #{styled_name}/#{styled_arity}"
+        end)
         |> Enum.join("\n")
 
       "#{header}\n#{funcs}"
@@ -80,16 +85,22 @@ defmodule BeamSpy.Commands.Imports do
     |> Enum.join("\n\n")
   end
 
-  defp format_output(imports, :text, false) do
+  defp format_output(imports, :text, false, theme) do
     rows =
       Enum.map(imports, fn {mod, name, arity} ->
-        [format_module_name(mod), Atom.to_string(name), Integer.to_string(arity)]
+        styled_mod = Theme.styled_string(format_module_name(mod), "module", theme)
+        styled_name = Theme.styled_string(Atom.to_string(name), "function", theme)
+        styled_arity = Theme.styled_string(Integer.to_string(arity), "arity", theme)
+        [styled_mod, styled_name, styled_arity]
       end)
 
-    Format.table(rows, ["Module", "Function", "Arity"])
+    header_mod = Theme.styled_string("Module", "ui.header", theme)
+    header_func = Theme.styled_string("Function", "ui.header", theme)
+    header_arity = Theme.styled_string("Arity", "ui.header", theme)
+    Format.table(rows, [header_mod, header_func, header_arity])
   end
 
-  defp format_output(imports, :json, _group) do
+  defp format_output(imports, :json, _group, _theme) do
     imports
     |> Enum.map(fn {mod, name, arity} ->
       %{

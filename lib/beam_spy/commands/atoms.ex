@@ -6,7 +6,7 @@ defmodule BeamSpy.Commands.Atoms do
   Similar to `strings` but for atoms.
   """
 
-  alias BeamSpy.{BeamFile, Filter, Format}
+  alias BeamSpy.{BeamFile, Filter, Format, Theme}
 
   @doc """
   Extract atoms from a BEAM file.
@@ -36,10 +36,11 @@ defmodule BeamSpy.Commands.Atoms do
   @spec run(String.t(), keyword()) :: String.t()
   def run(path, opts \\ []) do
     format = Keyword.get(opts, :format, :text)
+    theme = Keyword.get(opts, :theme, Theme.default())
 
     case extract(path, opts) do
       {:ok, atoms} ->
-        format_output(atoms, format)
+        format_output(atoms, format, theme)
 
       {:error, reason} ->
         format_error(reason)
@@ -53,16 +54,29 @@ defmodule BeamSpy.Commands.Atoms do
     Filter.filter_list(filter, atoms)
   end
 
-  defp format_output(atoms, :text) do
+  defp format_output(atoms, :text, theme) do
     atoms
-    |> Enum.map(&Atom.to_string/1)
+    |> Enum.map(fn atom ->
+      str = Atom.to_string(atom)
+      element = if special_atom?(atom), do: "atom.special", else: "atom"
+      Theme.styled_string(str, element, theme)
+    end)
     |> Enum.join("\n")
   end
 
-  defp format_output(atoms, :json) do
+  defp format_output(atoms, :json, _theme) do
     atoms
     |> Enum.map(&Atom.to_string/1)
     |> Format.json()
+  end
+
+  # Atoms that have special meaning in BEAM
+  defp special_atom?(atom) when atom in [nil, true, false], do: true
+  defp special_atom?(atom) when atom in [:error, :ok, :undefined], do: true
+
+  defp special_atom?(atom) do
+    str = Atom.to_string(atom)
+    String.starts_with?(str, "Elixir.")
   end
 
   defp format_error(:not_a_beam_file) do
