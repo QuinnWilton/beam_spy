@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux_x86_64
+            asset_name: beam_spy_linux_x86_64
+          - os: ubuntu-latest
+            target: linux_arm64
+            asset_name: beam_spy_linux_arm64
+          - os: macos-latest
+            target: macos_x86_64
+            asset_name: beam_spy_macos_x86_64
+          - os: macos-14
+            target: macos_arm64
+            asset_name: beam_spy_macos_arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir (Linux)
+        if: runner.os == 'Linux'
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '26.0'
+          elixir-version: '1.16'
+
+      - name: Set up Elixir (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install erlang elixir
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Build Burrito release
+        env:
+          MIX_ENV: prod
+          BURRITO_TARGET: ${{ matrix.target }}
+        run: mix release beam_spy
+
+      - name: Find and rename binary
+        run: |
+          # Burrito outputs to burrito_out directory
+          mkdir -p artifacts
+          find burrito_out -type f -name "beam_spy*" -exec cp {} artifacts/${{ matrix.asset_name }} \;
+          chmod +x artifacts/${{ matrix.asset_name }} || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: artifacts/${{ matrix.asset_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
