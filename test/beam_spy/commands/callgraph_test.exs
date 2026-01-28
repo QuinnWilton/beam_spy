@@ -1,7 +1,9 @@
 defmodule BeamSpy.Commands.CallgraphTest do
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   alias BeamSpy.Commands.Callgraph
+  alias BeamSpy.Test.Helpers
 
   @test_beam_path :code.which(:lists) |> to_string()
 
@@ -108,6 +110,74 @@ defmodule BeamSpy.Commands.CallgraphTest do
           quote_count = line |> String.graphemes() |> Enum.count(&(&1 == "\""))
           assert rem(quote_count, 2) == 0, "Unbalanced quotes in: #{line}"
         end
+      end
+    end
+  end
+
+  describe "property tests" do
+    @stdlib_modules [Enum, List, Map, String, :lists, :maps, :ets]
+
+    property "graph edges only reference existing nodes" do
+      check all(module <- member_of(@stdlib_modules)) do
+        beam_path = Helpers.beam_path(module)
+        {:ok, graph} = Callgraph.extract(beam_path)
+
+        for {from, to} <- graph.edges do
+          assert from in graph.nodes, "Edge source #{from} not in nodes"
+          assert to in graph.nodes, "Edge target #{to} not in nodes"
+        end
+      end
+    end
+
+    property "DOT output has valid basic syntax" do
+      check all(module <- member_of(@stdlib_modules)) do
+        beam_path = Helpers.beam_path(module)
+        dot = Callgraph.run(beam_path, format: :dot)
+
+        # Must start with digraph declaration
+        assert dot =~ ~r/^digraph\s+\w+\s*\{/
+
+        # Must end with closing brace
+        assert String.trim(dot) |> String.ends_with?("}")
+
+        # All edge lines should have balanced quotes
+        lines = String.split(dot, "\n")
+
+        for line <- lines, String.contains?(line, "->") do
+          quote_count = line |> String.graphemes() |> Enum.count(&(&1 == "\""))
+          assert rem(quote_count, 2) == 0, "Unbalanced quotes in: #{line}"
+        end
+      end
+    end
+
+    property "JSON output has valid structure" do
+      check all(module <- member_of(@stdlib_modules)) do
+        beam_path = Helpers.beam_path(module)
+        output = Callgraph.run(beam_path, format: :json)
+
+        {:ok, decoded} = Jason.decode(output)
+        assert is_list(decoded["nodes"])
+        assert is_list(decoded["edges"])
+
+        # All edges should have from and to
+        for edge <- decoded["edges"] do
+          assert Map.has_key?(edge, "from")
+          assert Map.has_key?(edge, "to")
+        end
+      end
+    end
+
+    property "node count is consistent across formats" do
+      check all(module <- member_of(@stdlib_modules)) do
+        beam_path = Helpers.beam_path(module)
+
+        {:ok, graph} = Callgraph.extract(beam_path)
+        json_output = Callgraph.run(beam_path, format: :json)
+        {:ok, json_data} = Jason.decode(json_output)
+
+        # Node count should match between extract and JSON output
+        assert length(graph.nodes) == length(json_data["nodes"])
+        assert length(graph.edges) == length(json_data["edges"])
       end
     end
   end
