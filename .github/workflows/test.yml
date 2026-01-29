@@ -23,6 +23,7 @@ jobs:
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
+          gleam-version: '1.14'
 
       - name: Restore dependencies cache
         uses: actions/cache@v4
@@ -56,6 +57,7 @@ jobs:
         with:
           otp-version: '27.0'
           elixir-version: '1.18'
+          gleam-version: '1.14'
 
       - name: Restore dependencies cache
         uses: actions/cache@v4

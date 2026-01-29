@@ -84,11 +84,12 @@ jobs:
         with:
           otp-version: '27.0'
           elixir-version: '1.18'
+          gleam-version: '1.14'
 
       - name: Set up Elixir (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install erlang elixir
+          brew install erlang elixir gleam
 
       - name: Install dependencies
         run: |
