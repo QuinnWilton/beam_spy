@@ -53,6 +53,14 @@ defmodule BeamSpy.CLI do
 
         1
 
+      {:error, _subcommands, errors} ->
+        # Errors from subcommand parsing
+        for error <- List.wrap(errors) do
+          IO.puts(:stderr, "Error: #{error}")
+        end
+
+        1
+
       :help ->
         IO.puts(Optimus.help(opt))
         0
@@ -93,21 +101,6 @@ defmodule BeamSpy.CLI do
         list_themes: [
           long: "--list-themes",
           help: "List available themes and exit"
-        ]
-      ],
-      options: [
-        theme: [
-          short: "-t",
-          long: "--theme",
-          help: "Color theme to use",
-          parser: :string,
-          default: "default"
-        ],
-        paging: [
-          long: "--paging",
-          help: "Paging mode: auto, always, never (default: auto)",
-          parser: :string,
-          default: "auto"
         ]
       ],
       subcommands: [
