@@ -67,15 +67,9 @@ defmodule BeamSpy.CLI do
 
       {:help, [subcommand]} ->
         # Help for a specific subcommand: beam_spy help disasm
-        case Optimus.fetch_subcommand(opt, [subcommand]) do
-          {subopt, _path} ->
-            IO.puts(Optimus.help(subopt))
-            0
-
-          nil ->
-            IO.puts(:stderr, "Unknown command: #{subcommand}")
-            1
-        end
+        {subopt, _path} = Optimus.fetch_subcommand(opt, [subcommand])
+        IO.puts(Optimus.help(subopt))
+        0
 
       :version ->
         IO.puts(BeamSpy.version())

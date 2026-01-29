@@ -26,7 +26,16 @@ defmodule BeamSpy.MixProject do
 
       # Docs
       name: "BeamSpy",
-      docs: docs()
+      docs: docs(),
+
+      # Dialyzer
+      dialyzer: dialyzer()
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_add_apps: [:mix]
     ]
   end
 
@@ -61,6 +70,7 @@ defmodule BeamSpy.MixProject do
       {:stream_data, "~> 1.0", only: [:test, :dev]},
       {:mneme, "~> 0.10", only: [:test, :dev]},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.4", only: :dev, runtime: false},
 
       # Test fixtures for other BEAM languages
       {:mix_gleam, "~> 0.6", only: [:dev, :test], runtime: false},
