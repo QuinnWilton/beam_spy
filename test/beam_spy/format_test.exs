@@ -282,7 +282,8 @@ defmodule BeamSpy.FormatTest do
     end
 
     test "shows all printable ASCII correctly" do
-      data = " ~"  # space and tilde (first and last printable)
+      # space and tilde (first and last printable)
+      data = " ~"
       output = Format.hex_dump(data)
       assert output =~ "| ~|"
     end

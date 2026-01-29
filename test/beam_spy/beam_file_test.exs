@@ -180,7 +180,8 @@ defmodule BeamSpy.BeamFileTest do
     end
 
     test "returns error for non-existent file" do
-      assert {:error, {:file_error, :enoent}} = BeamFile.read_compile_info("/nonexistent/file.beam")
+      assert {:error, {:file_error, :enoent}} =
+               BeamFile.read_compile_info("/nonexistent/file.beam")
     end
   end
 

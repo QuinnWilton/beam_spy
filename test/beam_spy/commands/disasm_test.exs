@@ -246,6 +246,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
       # Label instructions have integer arguments
       labels = Enum.filter(func.instructions, fn {_, name, _} -> name == "label" end)
+
       for {_, "label", [n]} <- labels do
         assert String.match?(n, ~r/^\d+$/)
       end

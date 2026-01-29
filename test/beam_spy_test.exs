@@ -47,9 +47,10 @@ defmodule BeamSpyTest do
 
     test "supports filter option" do
       assert {:ok, exports} = BeamSpy.exports("lists", filter: "reverse")
+
       assert Enum.all?(exports, fn {name, _arity} ->
-        name |> Atom.to_string() |> String.contains?("reverse")
-      end)
+               name |> Atom.to_string() |> String.contains?("reverse")
+             end)
     end
 
     test "returns error for non-existent module" do

@@ -37,7 +37,16 @@ defmodule BeamSpy.ThemeTest do
     end
 
     test "loads all bundled themes without error" do
-      for theme_name <- ["default", "monokai", "dracula", "nord", "plain", "solarized-dark", "solarized-light", "default-light"] do
+      for theme_name <- [
+            "default",
+            "monokai",
+            "dracula",
+            "nord",
+            "plain",
+            "solarized-dark",
+            "solarized-light",
+            "default-light"
+          ] do
         assert {:ok, _theme} = Theme.load(theme_name), "Failed to load theme: #{theme_name}"
       end
     end
@@ -86,7 +95,18 @@ defmodule BeamSpy.ThemeTest do
 
     test "contains all bundled themes" do
       themes = Theme.list()
-      expected = ["default", "default-light", "dracula", "monokai", "nord", "plain", "solarized-dark", "solarized-light"]
+
+      expected = [
+        "default",
+        "default-light",
+        "dracula",
+        "monokai",
+        "nord",
+        "plain",
+        "solarized-dark",
+        "solarized-light"
+      ]
+
       for theme <- expected do
         assert theme in themes, "Missing theme: #{theme}"
       end
@@ -155,6 +175,7 @@ defmodule BeamSpy.ThemeTest do
     test "themes have UI colors" do
       {:ok, theme} = Theme.load("default")
       ui_keys = ["ui.header", "ui.border", "ui.dim", "ui.key", "ui.value"]
+
       for key <- ui_keys do
         assert Map.has_key?(theme.colors, key), "Missing UI color: #{key}"
       end
@@ -163,6 +184,7 @@ defmodule BeamSpy.ThemeTest do
     test "themes have opcode colors" do
       {:ok, theme} = Theme.load("default")
       opcode_keys = ["opcode.call", "opcode.control", "opcode.data", "opcode.return"]
+
       for key <- opcode_keys do
         assert Map.has_key?(theme.colors, key), "Missing opcode color: #{key}"
       end
@@ -171,6 +193,7 @@ defmodule BeamSpy.ThemeTest do
     test "themes have register colors" do
       {:ok, theme} = Theme.load("default")
       register_keys = ["register.x", "register.y"]
+
       for key <- register_keys do
         assert Map.has_key?(theme.colors, key), "Missing register color: #{key}"
       end

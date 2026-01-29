@@ -165,7 +165,8 @@ defmodule BeamSpy.Commands.InfoTest do
       {:ok, output} = Info.run(@test_beam_path)
       # Default format is text, which has "Module:" key
       assert output =~ "Module"
-      refute output =~ "{"  # JSON would have braces
+      # JSON would have braces
+      refute output =~ "{"
     end
   end
 
