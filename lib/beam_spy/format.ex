@@ -203,7 +203,8 @@ defmodule BeamSpy.Format do
 
   defp maybe_add_fg(codes, "#" <> hex) do
     {r, g, b} = hex_to_rgb(hex)
-    [IO.ANSI.color(r, g, b) | codes]
+    # IO.ANSI.color/3 expects 0-5 for 6x6x6 color cube, convert from 0-255
+    [IO.ANSI.color(div(r, 51), div(g, 51), div(b, 51)) | codes]
   end
 
   defp maybe_add_bg(codes, nil), do: codes

@@ -68,6 +68,11 @@ defmodule BeamSpy.SourceTest do
 
       File.rm!(tmp_path)
     end
+
+    test "returns error for non-existent explicit source path" do
+      result = Source.load_source(@erlang_beam_path, source_path: "/nonexistent/source.ex")
+      assert {:error, {:file_error, :enoent}} = result
+    end
   end
 
   describe "group_by_line/1" do
@@ -324,6 +329,23 @@ defmodule BeamSpy.SourceTest do
 
         {:error, _} ->
           :ok
+      end
+    end
+
+    test "returns error for non-existent file" do
+      result = Source.parse_line_table("/nonexistent/file.beam")
+      assert {:error, _} = result
+    end
+
+    test "returns error for non-beam file" do
+      tmp_path = Path.join(System.tmp_dir!(), "not_a_beam_line.beam")
+      File.write!(tmp_path, "not a beam file")
+
+      try do
+        result = Source.parse_line_table(tmp_path)
+        assert {:error, _} = result
+      after
+        File.rm(tmp_path)
       end
     end
 

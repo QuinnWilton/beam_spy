@@ -16,6 +16,26 @@ defmodule BeamSpy.Commands.AtomsTest do
       end
     end
 
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = Atoms.extract("/nonexistent/file.beam")
+    end
+
+    test "returns error for invalid beam file" do
+      tmp_path = Path.join(System.tmp_dir!(), "not_a_beam_atoms.beam")
+      File.write!(tmp_path, "not a beam file")
+
+      try do
+        assert {:error, :not_a_beam_file} = Atoms.extract(tmp_path)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
+    test "filter with no matches returns empty list" do
+      {:ok, atoms} = Atoms.extract(@test_beam_path, filter: "xyz_nonexistent_pattern_abc")
+      assert atoms == []
+    end
+
     test "includes module name in atoms" do
       {:ok, atoms} = Atoms.extract(@test_beam_path)
       assert :lists in atoms
@@ -35,6 +55,12 @@ defmodule BeamSpy.Commands.AtomsTest do
       {:ok, output} = Atoms.run(@test_beam_path, format: :text)
       lines = String.split(output, "\n", trim: true)
       assert length(lines) > 0
+    end
+
+    test "returns error message for invalid file" do
+      {:error, msg} = Atoms.run("/nonexistent/file.beam", format: :text)
+      assert is_binary(msg)
+      assert msg =~ "Error:"
     end
 
     test "filters atoms" do

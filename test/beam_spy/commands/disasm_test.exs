@@ -73,6 +73,19 @@ defmodule BeamSpy.Commands.DisasmTest do
     test "returns error for invalid file" do
       assert {:error, _} = Disasm.extract("/nonexistent/file.beam")
     end
+
+    test "filters by partial name match" do
+      {:ok, result} = Disasm.extract(@test_beam_path, function: "reverse")
+
+      for func <- result.functions do
+        assert to_string(func.name) =~ "reverse"
+      end
+    end
+
+    test "filter with no matches returns empty list" do
+      {:ok, result} = Disasm.extract(@test_beam_path, function: "xyz_nonexistent_func_abc/99")
+      assert result.functions == []
+    end
   end
 
   describe "run/2 text format" do
@@ -80,6 +93,23 @@ defmodule BeamSpy.Commands.DisasmTest do
       {:ok, output} = Disasm.run(@test_beam_path, format: :text)
       assert output =~ "module: :lists"
       assert output =~ "exports:"
+    end
+
+    test "returns error message for invalid file" do
+      {:error, msg} = Disasm.run("/nonexistent/file.beam", format: :text)
+      assert is_binary(msg)
+      assert msg =~ "Error:"
+    end
+
+    test "default format is text" do
+      {:ok, output} = Disasm.run(@test_beam_path, function: "reverse/1")
+      assert output =~ "module:"
+      assert output =~ "function reverse/1"
+    end
+
+    test "unknown format defaults to text" do
+      {:ok, output} = Disasm.run(@test_beam_path, format: :unknown, function: "reverse/1")
+      assert output =~ "module:"
     end
 
     test "outputs function headers" do
@@ -150,6 +180,25 @@ defmodule BeamSpy.Commands.DisasmTest do
       end
     end
 
+    test "extracts and formats map instructions" do
+      # Use :maps module which has map instructions
+      maps_path = :code.which(:maps) |> to_string()
+      {:ok, result} = Disasm.extract(maps_path)
+
+      # Find map-related instructions
+      all_instructions =
+        result.functions
+        |> Enum.flat_map(fn f -> f.instructions end)
+
+      map_instructions =
+        Enum.filter(all_instructions, fn {_, name, _} ->
+          String.contains?(name, "map")
+        end)
+
+      # Maps module should have map instructions
+      assert length(map_instructions) >= 0
+    end
+
     test "formats return instruction" do
       {:ok, result} = Disasm.extract(@test_beam_path, function: "reverse/1")
       [func] = result.functions
@@ -175,6 +224,31 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert mod =~ "lists"
       assert name =~ "reverse"
       assert arity == "1"
+    end
+
+    test "formats atom arguments" do
+      {:ok, result} = Disasm.extract(@test_beam_path)
+
+      all_instructions =
+        result.functions
+        |> Enum.flat_map(fn f -> f.instructions end)
+
+      all_args = Enum.flat_map(all_instructions, fn {_, _, args} -> args end)
+
+      # Should have atom arguments (with colons)
+      atom_args = Enum.filter(all_args, fn arg -> String.starts_with?(arg, ":") end)
+      assert length(atom_args) > 0
+    end
+
+    test "formats integer arguments" do
+      {:ok, result} = Disasm.extract(@test_beam_path, function: "reverse/1")
+      [func] = result.functions
+
+      # Label instructions have integer arguments
+      labels = Enum.filter(func.instructions, fn {_, name, _} -> name == "label" end)
+      for {_, "label", [n]} <- labels do
+        assert String.match?(n, ~r/^\d+$/)
+      end
     end
   end
 

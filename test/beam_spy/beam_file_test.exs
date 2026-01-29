@@ -56,6 +56,21 @@ defmodule BeamSpy.BeamFileTest do
       end
     end
 
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = BeamFile.read_all_chunks("/nonexistent/file.beam")
+    end
+
+    test "returns error for non-beam file" do
+      tmp_path = Path.join(System.tmp_dir!(), "not_a_beam_chunks.beam")
+      File.write!(tmp_path, "not a beam file")
+
+      try do
+        assert {:error, :not_a_beam_file} = BeamFile.read_all_chunks(tmp_path)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
     test "includes standard chunks" do
       {:ok, chunks} = BeamFile.read_all_chunks(@test_beam_path)
       # Convert all IDs to strings for comparison
@@ -120,6 +135,10 @@ defmodule BeamSpy.BeamFileTest do
       end
     end
 
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = BeamFile.read_exports("/nonexistent/file.beam")
+    end
+
     test "includes known exports" do
       {:ok, exports} = BeamFile.read_exports(@test_beam_path)
 
@@ -146,6 +165,10 @@ defmodule BeamSpy.BeamFileTest do
         assert is_integer(arity) and arity >= 0
       end
     end
+
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = BeamFile.read_imports("/nonexistent/file.beam")
+    end
   end
 
   describe "read_compile_info/1" do
@@ -155,12 +178,20 @@ defmodule BeamSpy.BeamFileTest do
       # Should have at least some standard keys
       assert Keyword.has_key?(info, :version) or Keyword.has_key?(info, :options)
     end
+
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = BeamFile.read_compile_info("/nonexistent/file.beam")
+    end
   end
 
   describe "read_attributes/1" do
     test "returns keyword list of module attributes" do
       assert {:ok, attrs} = BeamFile.read_attributes(@test_beam_path)
       assert is_list(attrs)
+    end
+
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = BeamFile.read_attributes("/nonexistent/file.beam")
     end
   end
 
@@ -187,6 +218,21 @@ defmodule BeamSpy.BeamFileTest do
       assert is_binary(md5)
       assert byte_size(md5) == 16
     end
+
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = BeamFile.get_md5("/nonexistent/file.beam")
+    end
+
+    test "returns error for invalid beam file" do
+      tmp_path = Path.join(System.tmp_dir!(), "not_a_beam_md5.beam")
+      File.write!(tmp_path, "not a beam file")
+
+      try do
+        assert {:error, :not_a_beam_file} = BeamFile.get_md5(tmp_path)
+      after
+        File.rm(tmp_path)
+      end
+    end
   end
 
   describe "read_raw_chunk/2" do
@@ -205,6 +251,11 @@ defmodule BeamSpy.BeamFileTest do
       assert {:error, {:missing_chunk, "XXXX"}} =
                BeamFile.read_raw_chunk(@test_beam_path, "XXXX")
     end
+
+    test "accepts charlist chunk id" do
+      assert {:ok, data} = BeamFile.read_raw_chunk(@test_beam_path, ~c"Code")
+      assert is_binary(data)
+    end
   end
 
   describe "chunk_descriptions/0" do
@@ -213,6 +264,39 @@ defmodule BeamSpy.BeamFileTest do
       assert is_map(descriptions)
       assert Map.has_key?(descriptions, "Code")
       assert Map.has_key?(descriptions, "AtU8")
+    end
+  end
+
+  describe "disassemble/1" do
+    test "disassembles a valid beam file" do
+      assert {:ok, result} = BeamFile.disassemble(@test_beam_path)
+      assert result.module == :lists
+      assert is_list(result.functions)
+      assert length(result.functions) > 0
+    end
+
+    test "each function has name, arity, and instructions" do
+      {:ok, result} = BeamFile.disassemble(@test_beam_path)
+
+      for func <- result.functions do
+        # Functions are tuples: {:function, name, arity, entry, instructions}
+        assert {:function, name, arity, entry, instructions} = func
+        assert is_atom(name)
+        assert is_integer(arity)
+        assert is_integer(entry)
+        assert is_list(instructions)
+      end
+    end
+
+    test "returns error for invalid beam file" do
+      tmp_path = Path.join(System.tmp_dir!(), "not_a_beam3.beam")
+      File.write!(tmp_path, "not a beam file")
+
+      try do
+        assert {:error, _} = BeamFile.disassemble(tmp_path)
+      after
+        File.rm(tmp_path)
+      end
     end
   end
 
@@ -233,6 +317,12 @@ defmodule BeamSpy.BeamFileTest do
     test "can read Elixir atoms" do
       {:ok, atoms} = BeamFile.read_atoms(@elixir_beam_path)
       assert Enum in atoms
+    end
+
+    test "can disassemble Elixir module" do
+      {:ok, result} = BeamFile.disassemble(@elixir_beam_path)
+      assert result.module == Enum
+      assert length(result.functions) > 0
     end
   end
 end

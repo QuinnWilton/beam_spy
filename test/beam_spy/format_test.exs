@@ -105,6 +105,52 @@ defmodule BeamSpy.FormatTest do
       dt = ~U[2024-01-15 10:30:00Z]
       assert Format.format_value(dt) == "2024-01-15T10:30:00Z"
     end
+
+    test "formats NaiveDateTime as ISO8601" do
+      ndt = ~N[2024-01-15 10:30:00]
+      assert Format.format_value(ndt) == "2024-01-15T10:30:00"
+    end
+
+    test "formats nested lists" do
+      assert Format.format_value([1, 2, 3]) == "1, 2, 3"
+    end
+
+    test "formats other types via inspect" do
+      assert Format.format_value({:tuple, 1, 2}) == "{:tuple, 1, 2}"
+    end
+  end
+
+  describe "format_beam_error/1" do
+    test "formats :not_a_beam_file" do
+      assert Format.format_beam_error(:not_a_beam_file) == "Error: Not a valid BEAM file"
+    end
+
+    test "formats file_error tuple" do
+      result = Format.format_beam_error({:file_error, :enoent})
+      assert result =~ "Error:"
+    end
+
+    test "formats missing_chunk tuple" do
+      assert Format.format_beam_error({:missing_chunk, "Dbgi"}) == "Error: Chunk 'Dbgi' not found"
+    end
+
+    test "formats unknown error" do
+      result = Format.format_beam_error(:some_unknown_error)
+      assert result =~ "Error:"
+      assert result =~ "some_unknown_error"
+    end
+  end
+
+  describe "format_module_name/1" do
+    test "strips Elixir. prefix from Elixir modules" do
+      assert Format.format_module_name(Enum) == "Enum"
+      assert Format.format_module_name(String.Chars) == "String.Chars"
+    end
+
+    test "preserves Erlang module names" do
+      assert Format.format_module_name(:lists) == "lists"
+      assert Format.format_module_name(:erlang) == "erlang"
+    end
   end
 
   describe "styled/3" do
@@ -124,6 +170,50 @@ defmodule BeamSpy.FormatTest do
       binary = IO.iodata_to_binary(result)
       assert binary =~ "hello"
       assert binary =~ "\e["
+    end
+
+    test "applies style with list of styles" do
+      result = Format.styled("hello", %{style: [:bold, :underline]}, true)
+      binary = IO.iodata_to_binary(result)
+      assert binary =~ "hello"
+      assert binary =~ "\e["
+    end
+
+    test "applies style with hex color" do
+      result = Format.styled("hello", %{fg: "#FF0000"}, true)
+      binary = IO.iodata_to_binary(result)
+      assert binary =~ "hello"
+    end
+
+    test "applies background color" do
+      result = Format.styled("hello", %{bg: :blue}, true)
+      binary = IO.iodata_to_binary(result)
+      assert binary =~ "hello"
+    end
+
+    test "handles all standard styles" do
+      for style <- [:bold, :dim, :italic, :underline, :reverse] do
+        result = Format.styled("text", %{style: style}, true)
+        assert IO.iodata_to_binary(result) =~ "text"
+      end
+    end
+
+    test "handles blink and strikethrough styles" do
+      for style <- [:blink, :strikethrough, :hidden] do
+        result = Format.styled("text", %{style: style}, true)
+        assert IO.iodata_to_binary(result) =~ "text"
+      end
+    end
+
+    test "handles invalid hex color gracefully" do
+      # Invalid hex should fallback to white
+      result = Format.styled("text", %{fg: "#invalid"}, true)
+      assert IO.iodata_to_binary(result) =~ "text"
+    end
+
+    test "handles empty style map" do
+      result = Format.styled("text", %{}, true)
+      assert IO.iodata_to_binary(result) =~ "text"
     end
   end
 
@@ -167,6 +257,34 @@ defmodule BeamSpy.FormatTest do
 
       # Should still have the ASCII representation
       assert output =~ "|Hi|"
+    end
+
+    test "handles empty binary" do
+      output = Format.hex_dump(<<>>)
+      assert output == ""
+    end
+
+    test "supports custom bytes_per_line" do
+      data = "Hello"
+      output = Format.hex_dump(data, bytes_per_line: 4)
+      lines = String.split(output, "\n")
+      # With 5 bytes and 4 per line, should have 2 lines
+      assert length(lines) == 2
+    end
+
+    test "handles multi-line output" do
+      data = String.duplicate("A", 32)
+      output = Format.hex_dump(data)
+      lines = String.split(output, "\n")
+      # 32 bytes with 16 per line = 2 lines
+      assert length(lines) == 2
+      assert output =~ "00000010:"
+    end
+
+    test "shows all printable ASCII correctly" do
+      data = " ~"  # space and tilde (first and last printable)
+      output = Format.hex_dump(data)
+      assert output =~ "| ~|"
     end
   end
 

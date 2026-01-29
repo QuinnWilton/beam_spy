@@ -66,11 +66,55 @@ defmodule BeamSpy.TerminalTest do
     test "returns a boolean" do
       assert is_boolean(Terminal.supports_256_color?())
     end
+
+    test "checks TERM environment variable for 256color" do
+      # In test environment (non-interactive), this always returns false
+      # because supports_color?() returns false when not interactive.
+      # We just verify it doesn't crash with various TERM values.
+      original = System.get_env("TERM")
+
+      try do
+        System.put_env("TERM", "xterm-256color")
+        assert is_boolean(Terminal.supports_256_color?())
+
+        System.put_env("TERM", "xterm")
+        assert is_boolean(Terminal.supports_256_color?())
+      after
+        if original do
+          System.put_env("TERM", original)
+        else
+          System.delete_env("TERM")
+        end
+      end
+    end
   end
 
   describe "supports_truecolor?/0" do
     test "returns a boolean" do
       assert is_boolean(Terminal.supports_truecolor?())
+    end
+
+    test "checks COLORTERM environment variable" do
+      # In test environment (non-interactive), this always returns false.
+      # We verify it doesn't crash with various COLORTERM values.
+      original = System.get_env("COLORTERM")
+
+      try do
+        System.put_env("COLORTERM", "truecolor")
+        assert is_boolean(Terminal.supports_truecolor?())
+
+        System.put_env("COLORTERM", "24bit")
+        assert is_boolean(Terminal.supports_truecolor?())
+
+        System.delete_env("COLORTERM")
+        assert is_boolean(Terminal.supports_truecolor?())
+      after
+        if original do
+          System.put_env("COLORTERM", original)
+        else
+          System.delete_env("COLORTERM")
+        end
+      end
     end
   end
 
@@ -103,6 +147,22 @@ defmodule BeamSpy.TerminalTest do
     test "defaults to :auto for unknown modes" do
       # Unknown modes should behave like :auto
       assert Terminal.resolve_color_mode(:unknown) == Terminal.resolve_color_mode(:auto)
+    end
+
+    test ":always returns true when NO_COLOR is not set and environment allows" do
+      original = System.get_env("NO_COLOR")
+
+      try do
+        System.delete_env("NO_COLOR")
+        # :always returns true when NO_COLOR is not set
+        assert Terminal.resolve_color_mode(:always) == true
+      after
+        if original do
+          System.put_env("NO_COLOR", original)
+        else
+          System.delete_env("NO_COLOR")
+        end
+      end
     end
   end
 end

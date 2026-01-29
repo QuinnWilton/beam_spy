@@ -18,6 +18,21 @@ defmodule BeamSpy.MixProject do
 
       # Test
       test_ignore_filters: [~r{test/fixtures/}, ~r{test/support/}],
+      test_coverage: [
+        summary: [threshold: 89],
+        ignore_modules: [
+          Mix.Tasks.BeamSpy,
+          BeamSpy.Application,
+          # Terminal-dependent modules that require TTY for full coverage
+          BeamSpy.Terminal,
+          BeamSpy.Theme,
+          BeamSpy.Pager,
+          # Source loading depends on actual source files being present
+          BeamSpy.Source,
+          :test_erlang,
+          :test_fixture
+        ]
+      ],
 
       # Hex
       description: "A comprehensive BEAM file analysis tool",

@@ -17,6 +17,21 @@ defmodule BeamSpy.Commands.ExportsTest do
       end
     end
 
+    test "returns error for non-existent file" do
+      assert {:error, {:file_error, :enoent}} = Exports.extract("/nonexistent/file.beam")
+    end
+
+    test "returns error for invalid beam file" do
+      tmp_path = Path.join(System.tmp_dir!(), "not_a_beam_exports.beam")
+      File.write!(tmp_path, "not a beam file")
+
+      try do
+        assert {:error, :not_a_beam_file} = Exports.extract(tmp_path)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
     test "includes known functions" do
       {:ok, exports} = Exports.extract(@test_beam_path)
       assert {:map, 2} in exports
@@ -43,6 +58,12 @@ defmodule BeamSpy.Commands.ExportsTest do
       {:ok, output} = Exports.run(@test_beam_path, format: :text)
       assert is_binary(output)
       assert output =~ "map"
+    end
+
+    test "returns error message for invalid file" do
+      {:error, msg} = Exports.run("/nonexistent/file.beam", format: :text)
+      assert is_binary(msg)
+      assert msg =~ "Error:"
     end
 
     test "plain format outputs function/arity" do

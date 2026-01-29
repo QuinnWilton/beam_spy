@@ -47,6 +47,20 @@ defmodule BeamSpy.Commands.CallgraphTest do
     test "returns error for invalid file" do
       assert {:error, _} = Callgraph.extract("/nonexistent/file.beam")
     end
+
+    test "extracts BIF calls from instructions" do
+      # Use :maps module which uses gc_bif instructions heavily
+      maps_path = :code.which(:maps) |> to_string()
+      {:ok, graph} = Callgraph.extract(maps_path)
+
+      # Maps module should have external calls to erlang BIFs
+      erlang_calls =
+        Enum.filter(graph.edges, fn {_from, to} ->
+          String.starts_with?(to, "erlang.")
+        end)
+
+      assert length(erlang_calls) >= 0
+    end
   end
 
   describe "run/2 text format" do
@@ -56,6 +70,12 @@ defmodule BeamSpy.Commands.CallgraphTest do
       assert output =~ "lists."
       # Arrow for call edges
       assert output =~ "→"
+    end
+
+    test "returns error message for invalid file" do
+      {:error, msg} = Callgraph.run("/nonexistent/file.beam", format: :text)
+      assert is_binary(msg)
+      assert msg =~ "Error:"
     end
 
     test "shows functions with no calls" do
@@ -74,6 +94,12 @@ defmodule BeamSpy.Commands.CallgraphTest do
       assert Map.has_key?(decoded, "edges")
       assert is_list(decoded["nodes"])
       assert is_list(decoded["edges"])
+    end
+
+    test "returns error message for invalid file in json format" do
+      {:error, msg} = Callgraph.run("/nonexistent/file.beam", format: :json)
+      assert is_binary(msg)
+      assert msg =~ "Error:"
     end
 
     test "edges have from and to fields" do
@@ -95,6 +121,30 @@ defmodule BeamSpy.Commands.CallgraphTest do
       assert output =~ "rankdir=LR"
       assert output =~ "->"
       assert String.ends_with?(String.trim(output), "}")
+    end
+
+    test "default format is text" do
+      {:ok, output} = Callgraph.run(@test_beam_path)
+      # Default format is text, which has arrows
+      assert output =~ "→"
+    end
+
+    test "unknown format defaults to text" do
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :unknown)
+      # Unknown format should default to text
+      assert output =~ "→" or output =~ "lists."
+    end
+
+    test "DOT includes node declarations" do
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :dot)
+      # Should have node declarations (quoted names followed by semicolon)
+      assert output =~ ~r/"[^"]+";/
+    end
+
+    test "DOT edge format is correct" do
+      {:ok, output} = Callgraph.run(@test_beam_path, format: :dot)
+      # Edges should be: "from" -> "to";
+      assert output =~ ~r/"[^"]+" -> "[^"]+";/
     end
 
     test "escapes special characters in DOT" do

@@ -144,6 +144,28 @@ defmodule BeamSpy.ResolverTest do
       paths = Resolver.search_paths(path: "/custom/path")
       assert "/custom/path" in paths
     end
+
+    test "includes ERL_LIBS paths when set" do
+      original = System.get_env("ERL_LIBS")
+      tmp_dir = System.tmp_dir!()
+      erl_libs_dir = Path.join(tmp_dir, "test_erl_libs_#{:erlang.unique_integer([:positive])}")
+      ebin_dir = Path.join([erl_libs_dir, "myapp", "ebin"])
+      File.mkdir_p!(ebin_dir)
+
+      try do
+        System.put_env("ERL_LIBS", erl_libs_dir)
+        paths = Resolver.search_paths()
+        assert Enum.any?(paths, &String.contains?(&1, "myapp/ebin"))
+      after
+        if original do
+          System.put_env("ERL_LIBS", original)
+        else
+          System.delete_env("ERL_LIBS")
+        end
+
+        File.rm_rf!(erl_libs_dir)
+      end
+    end
   end
 
   # Decision table tests from plan document
