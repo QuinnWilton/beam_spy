@@ -10,10 +10,11 @@ defmodule BeamSpy.TerminalTest do
       assert cols > 0
     end
 
-    test "returns at least 80 (fallback minimum)" do
-      # The fallback is 80, so we should always get at least that
-      # In a real terminal we might get more
-      assert Terminal.columns() >= 80
+    test "returns actual terminal columns or fallback" do
+      cols = Terminal.columns()
+      # In a real terminal, returns actual size (could be any positive value)
+      # Without a terminal, falls back to 80
+      assert cols > 0
     end
   end
 
@@ -24,9 +25,11 @@ defmodule BeamSpy.TerminalTest do
       assert rows > 0
     end
 
-    test "returns at least 24 (fallback minimum)" do
-      # The fallback is 24, so we should always get at least that
-      assert Terminal.rows() >= 24
+    test "returns actual terminal rows or fallback" do
+      rows = Terminal.rows()
+      # In a real terminal, returns actual size (could be any positive value)
+      # Without a terminal, falls back to 24
+      assert rows > 0
     end
   end
 
