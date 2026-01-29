@@ -1,5 +1,6 @@
 # BeamSpy Monokai Theme
-# Warm colors inspired by the Monokai color scheme
+# Based on the classic Monokai color scheme from Sublime Text
+# Pink keywords, green functions, yellow strings, cyan types, purple numbers
 
 name = "Monokai"
 variant = "dark"
@@ -8,36 +9,38 @@ variant = "dark"
 # UI elements
 "ui.header" = { fg = "white", style = "bold" }
 "ui.border" = "bright_black"
-"ui.key" = "cyan"
+"ui.key" = "magenta"
 "ui.value" = "white"
 "ui.arrow" = "bright_black"
 "ui.dim" = "bright_black"
+"ui.source" = { fg = "white", style = "italic" }
 
-# Data types
-"atom" = "cyan"
+# Data types - Monokai signature colors
+"atom" = "magenta"
 "atom.special" = { fg = "magenta", style = "bold" }
 "module" = "green"
-"function" = "yellow"
+"function" = "green"
 "arity" = "bright_black"
-"number" = "magenta"
+"number" = "bright_magenta"
 "string" = "yellow"
 "chunk_id" = { fg = "cyan", style = "bold" }
 
-# Opcodes
+# Opcodes - green for calls (functions), pink for control
 "opcode.call" = "green"
 "opcode.control" = "magenta"
-"opcode.data" = "white"
-"opcode.stack" = "cyan"
-"opcode.return" = "red"
-"opcode.exception" = "magenta"
+"opcode.data" = "cyan"
+"opcode.stack" = "white"
+"opcode.return" = "magenta"
+"opcode.exception" = "red"
 "opcode.error" = "red"
 "opcode.message" = "cyan"
 "opcode.binary" = "yellow"
+"opcode.float" = "bright_magenta"
 "opcode.meta" = "bright_black"
 "opcode.unknown" = "bright_red"
 
-# Registers
-"register.x" = "yellow"
-"register.y" = "bright_yellow"
-"register.fr" = "cyan"
+# Registers - warm colors
+"register.x" = "bright_yellow"
+"register.y" = "yellow"
+"register.fr" = "bright_magenta"
 "label" = "magenta"

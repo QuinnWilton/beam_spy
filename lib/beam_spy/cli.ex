@@ -133,7 +133,9 @@ defmodule BeamSpy.CLI do
       ],
       options: [
         format: format_option(),
-        filter: filter_option()
+        filter: filter_option(),
+        theme: theme_option(),
+        paging: paging_option()
       ]
     ]
   end
@@ -147,7 +149,9 @@ defmodule BeamSpy.CLI do
       ],
       options: [
         format: format_option(),
-        filter: filter_option()
+        filter: filter_option(),
+        theme: theme_option(),
+        paging: paging_option()
       ],
       flags: [
         plain: [
@@ -167,7 +171,9 @@ defmodule BeamSpy.CLI do
       ],
       options: [
         format: format_option(),
-        filter: filter_option()
+        filter: filter_option(),
+        theme: theme_option(),
+        paging: paging_option()
       ],
       flags: [
         group: [
@@ -187,7 +193,9 @@ defmodule BeamSpy.CLI do
         file: file_argument()
       ],
       options: [
-        format: format_option()
+        format: format_option(),
+        theme: theme_option(),
+        paging: paging_option()
       ]
     ]
   end
@@ -206,7 +214,9 @@ defmodule BeamSpy.CLI do
           short: "-r",
           help: "Hex dump of specific chunk (e.g., --raw AtU8)",
           parser: :string
-        ]
+        ],
+        theme: theme_option(),
+        paging: paging_option()
       ]
     ]
   end
@@ -225,7 +235,9 @@ defmodule BeamSpy.CLI do
           short: "-f",
           help: "Filter to specific function (supports globs: handle_*)",
           parser: :string
-        ]
+        ],
+        theme: theme_option(),
+        paging: paging_option()
       ],
       flags: [
         source: [
@@ -251,7 +263,9 @@ defmodule BeamSpy.CLI do
           help: "Output format: text, json, dot",
           parser: :string,
           default: "text"
-        ]
+        ],
+        theme: theme_option(),
+        paging: paging_option()
       ]
     ]
   end
@@ -283,6 +297,25 @@ defmodule BeamSpy.CLI do
       short: "-F",
       help: "Filter pattern (prefix with re: for regex, glob: for glob)",
       parser: :string
+    ]
+  end
+
+  defp theme_option do
+    [
+      short: "-t",
+      long: "--theme",
+      help: "Color theme to use (default: default)",
+      parser: :string,
+      default: "default"
+    ]
+  end
+
+  defp paging_option do
+    [
+      long: "--paging",
+      help: "Paging mode: auto, always, never",
+      parser: :string,
+      default: "auto"
     ]
   end
 

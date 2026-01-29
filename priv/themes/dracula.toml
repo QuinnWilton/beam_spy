@@ -1,40 +1,46 @@
+# BeamSpy Dracula Theme
+# Based on the Dracula color palette
+# Pink keywords, cyan functions, green strings, purple numbers
+
 name = "Dracula"
-author = "beam_spy"
 variant = "dark"
 
 [colors]
-# UI elements
-"ui.header" = { fg = "white", style = "bold" }
+# UI elements - dark background with purple accents
+"ui.header" = { fg = "bright_white", style = "bold" }
 "ui.border" = "bright_black"
-"ui.key" = "magenta"
-"ui.value" = "default"
+"ui.key" = "bright_magenta"
+"ui.value" = "white"
 "ui.arrow" = "bright_black"
 "ui.dim" = "bright_black"
+"ui.source" = { fg = "white", style = "italic" }
 
-# Data types
-"atom" = "cyan"
-"atom.special" = { fg = "magenta", style = "bold" }
-"module" = "yellow"
-"function" = "green"
+# Data types - Dracula signature: cyan functions, pink keywords
+"atom" = "bright_magenta"
+"atom.special" = { fg = "bright_magenta", style = "bold" }
+"module" = "bright_cyan"
+"function" = "bright_cyan"
 "arity" = "bright_black"
-"number" = "magenta"
-"string" = "yellow"
-"chunk_id" = { fg = "magenta", style = "bold" }
+"number" = "bright_magenta"
+"string" = "green"
+"chunk_id" = { fg = "bright_magenta", style = "bold" }
 
-# Opcodes
-"opcode.call" = "green"
-"opcode.control" = "magenta"
+# Opcodes - cyan for calls, pink for control
+"opcode.call" = "bright_cyan"
+"opcode.control" = "bright_magenta"
 "opcode.data" = "cyan"
 "opcode.stack" = "cyan"
-"opcode.return" = "red"
+"opcode.return" = "bright_magenta"
 "opcode.exception" = "yellow"
 "opcode.error" = "red"
-"opcode.message" = "magenta"
+"opcode.message" = "bright_magenta"
 "opcode.binary" = "green"
+"opcode.float" = "bright_magenta"
 "opcode.meta" = "bright_black"
+"opcode.unknown" = "red"
 
-# Registers
+# Registers - yellow/orange Dracula accents
 "register.x" = "yellow"
 "register.y" = "bright_yellow"
-"register.fr" = "cyan"
-"label" = "magenta"
+"register.fr" = "bright_magenta"
+"label" = "bright_magenta"

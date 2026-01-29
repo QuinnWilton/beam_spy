@@ -1,5 +1,7 @@
+# BeamSpy Default Light Theme
+# A clean light theme with good contrast
+
 name = "Default Light"
-author = "beam_spy"
 variant = "light"
 
 [colors]
@@ -7,34 +9,37 @@ variant = "light"
 "ui.header" = { fg = "black", style = "bold" }
 "ui.border" = "bright_black"
 "ui.key" = "blue"
-"ui.value" = "default"
+"ui.value" = "black"
 "ui.arrow" = "bright_black"
 "ui.dim" = "bright_black"
+"ui.source" = { fg = "black", style = "italic" }
 
 # Data types
-"atom" = "cyan"
-"atom.special" = { fg = "cyan", style = "bold" }
-"module" = "yellow"
-"function" = "green"
+"atom" = "blue"
+"atom.special" = { fg = "blue", style = "bold" }
+"module" = "magenta"
+"function" = "blue"
 "arity" = "bright_black"
-"number" = "magenta"
+"number" = "red"
 "string" = "green"
-"chunk_id" = { fg = "blue", style = "bold" }
+"chunk_id" = { fg = "magenta", style = "bold" }
 
 # Opcodes
-"opcode.call" = "green"
+"opcode.call" = "blue"
 "opcode.control" = "magenta"
-"opcode.data" = "default"
-"opcode.stack" = "default"
+"opcode.data" = "black"
+"opcode.stack" = "black"
 "opcode.return" = "red"
-"opcode.exception" = "cyan"
+"opcode.exception" = "magenta"
 "opcode.error" = "red"
 "opcode.message" = "blue"
 "opcode.binary" = "green"
+"opcode.float" = "red"
 "opcode.meta" = "bright_black"
+"opcode.unknown" = "red"
 
 # Registers
-"register.x" = "yellow"
-"register.y" = "bright_yellow"
-"register.fr" = "cyan"
-"label" = "yellow"
+"register.x" = "magenta"
+"register.y" = "bright_magenta"
+"register.fr" = "red"
+"label" = "magenta"

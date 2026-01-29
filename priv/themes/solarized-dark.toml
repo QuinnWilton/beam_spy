@@ -1,40 +1,46 @@
+# BeamSpy Solarized Dark Theme
+# Based on Ethan Schoonover's Solarized palette
+# Blue functions, cyan constants, green strings, precise color balance
+
 name = "Solarized Dark"
-author = "beam_spy"
 variant = "dark"
 
 [colors]
-# UI elements
+# UI elements - base colors
 "ui.header" = { fg = "white", style = "bold" }
-"ui.border" = "bright_black"
+"ui.border" = "cyan"
 "ui.key" = "blue"
-"ui.value" = "default"
-"ui.arrow" = "bright_black"
-"ui.dim" = "bright_black"
+"ui.value" = "white"
+"ui.arrow" = "cyan"
+"ui.dim" = "cyan"
+"ui.source" = { fg = "white", style = "italic" }
 
-# Data types
+# Data types - Solarized accents
 "atom" = "cyan"
 "atom.special" = { fg = "cyan", style = "bold" }
-"module" = "yellow"
+"module" = "blue"
 "function" = "blue"
-"arity" = "bright_black"
+"arity" = "cyan"
 "number" = "magenta"
 "string" = "green"
 "chunk_id" = { fg = "blue", style = "bold" }
 
-# Opcodes
+# Opcodes - blue dominant per Solarized convention
 "opcode.call" = "blue"
-"opcode.control" = "magenta"
+"opcode.control" = "green"
 "opcode.data" = "cyan"
-"opcode.stack" = "cyan"
-"opcode.return" = "red"
+"opcode.stack" = "yellow"
+"opcode.return" = "green"
 "opcode.exception" = "yellow"
 "opcode.error" = "red"
-"opcode.message" = "blue"
-"opcode.binary" = "green"
-"opcode.meta" = "bright_black"
+"opcode.message" = "magenta"
+"opcode.binary" = "cyan"
+"opcode.float" = "magenta"
+"opcode.meta" = "cyan"
+"opcode.unknown" = "red"
 
-# Registers
+# Registers - yellow/orange accents
 "register.x" = "yellow"
 "register.y" = "bright_yellow"
-"register.fr" = "cyan"
-"label" = "magenta"
+"register.fr" = "magenta"
+"label" = "green"

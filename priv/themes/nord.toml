@@ -1,40 +1,46 @@
+# BeamSpy Nord Theme
+# Based on the Nord arctic color palette
+# Frost blues dominant, muted aurora accents, calm and icy feel
+
 name = "Nord"
-author = "beam_spy"
 variant = "dark"
 
 [colors]
-# UI elements
-"ui.header" = { fg = "white", style = "bold" }
+# UI elements - polar night base with frost accents
+"ui.header" = { fg = "bright_white", style = "bold" }
 "ui.border" = "bright_black"
-"ui.key" = "cyan"
-"ui.value" = "default"
+"ui.key" = "bright_cyan"
+"ui.value" = "white"
 "ui.arrow" = "bright_black"
 "ui.dim" = "bright_black"
+"ui.source" = { fg = "white", style = "italic" }
 
-# Data types
-"atom" = "cyan"
-"atom.special" = { fg = "cyan", style = "bold" }
-"module" = "yellow"
-"function" = "blue"
+# Data types - frost blues for code, aurora for literals
+"atom" = "bright_cyan"
+"atom.special" = { fg = "bright_cyan", style = "bold" }
+"module" = "bright_blue"
+"function" = "bright_blue"
 "arity" = "bright_black"
-"number" = "magenta"
+"number" = "bright_magenta"
 "string" = "green"
-"chunk_id" = { fg = "blue", style = "bold" }
+"chunk_id" = { fg = "cyan", style = "bold" }
 
-# Opcodes
-"opcode.call" = "blue"
-"opcode.control" = "magenta"
-"opcode.data" = "default"
+# Opcodes - blue-heavy, nord signature
+"opcode.call" = "bright_blue"
+"opcode.control" = "bright_cyan"
+"opcode.data" = "cyan"
 "opcode.stack" = "cyan"
-"opcode.return" = "red"
+"opcode.return" = "bright_cyan"
 "opcode.exception" = "yellow"
 "opcode.error" = "red"
-"opcode.message" = "blue"
+"opcode.message" = "bright_blue"
 "opcode.binary" = "green"
+"opcode.float" = "bright_magenta"
 "opcode.meta" = "bright_black"
+"opcode.unknown" = "red"
 
-# Registers
+# Registers - aurora yellow/orange
 "register.x" = "yellow"
 "register.y" = "bright_yellow"
-"register.fr" = "cyan"
-"label" = "magenta"
+"register.fr" = "bright_magenta"
+"label" = "cyan"
