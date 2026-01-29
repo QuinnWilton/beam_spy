@@ -2,7 +2,6 @@ defmodule BeamSpy.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/quintusdev/beam_spy"
 
   def project do
     [
@@ -23,7 +22,7 @@ defmodule BeamSpy.MixProject do
       # Hex
       description: "A comprehensive BEAM file analysis tool",
       package: package(),
-      source_url: @source_url,
+      source_url: "https://github.com/quinnwilton/beam_spy",
 
       # Docs
       name: "BeamSpy",
@@ -102,7 +101,7 @@ defmodule BeamSpy.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url},
+      links: %{"GitHub" => "https://github.com/quinnwilton/beam_spy"},
       files: ~w(lib priv mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
