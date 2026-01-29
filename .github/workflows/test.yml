@@ -9,11 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        otp: ['25.0', '26.0', '27.0']
-        elixir: ['1.18']
 
     steps:
       - uses: actions/checkout@v4
@@ -21,8 +16,8 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
+          otp-version: '28.0'
+          elixir-version: '1.19'
           gleam-version: '1.14'
 
       - name: Restore dependencies cache
@@ -31,9 +26,9 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-28.0-1.19-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-
+            ${{ runner.os }}-mix-28.0-1.19-
 
       - name: Install dependencies
         run: mix deps.get
@@ -55,8 +50,8 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27.0'
-          elixir-version: '1.18'
+          otp-version: '28.0'
+          elixir-version: '1.19'
           gleam-version: '1.14'
 
       - name: Restore dependencies cache
@@ -65,7 +60,7 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-27.0-1.18-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-28.0-1.19-${{ hashFiles('**/mix.lock') }}
 
       - name: Install dependencies
         run: mix deps.get

@@ -15,8 +15,8 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27.0'
-          elixir-version: '1.18'
+          otp-version: '28.0'
+          elixir-version: '1.19'
           gleam-version: '1.14'
 
       - name: Restore dependencies cache
@@ -25,7 +25,7 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-27.0-1.18-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-28.0-1.19-${{ hashFiles('**/mix.lock') }}
 
       - name: Install dependencies
         run: mix deps.get
@@ -41,8 +41,8 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27.0'
-          elixir-version: '1.18'
+          otp-version: '28.0'
+          elixir-version: '1.19'
           gleam-version: '1.14'
 
       - name: Restore dependencies cache
@@ -51,13 +51,13 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-27.0-1.18-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-28.0-1.19-${{ hashFiles('**/mix.lock') }}
 
       - name: Restore PLT cache
         uses: actions/cache@v4
         with:
           path: priv/plts
-          key: ${{ runner.os }}-plt-27.0-1.18-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-plt-28.0-1.19-${{ hashFiles('**/mix.lock') }}
 
       - name: Install dependencies
         run: mix deps.get

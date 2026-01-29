@@ -82,8 +82,8 @@ jobs:
         if: runner.os == 'Linux'
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27.0'
-          elixir-version: '1.18'
+          otp-version: '28.0'
+          elixir-version: '1.19'
           gleam-version: '1.14'
 
       - name: Set up Elixir (macOS)
