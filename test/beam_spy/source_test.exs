@@ -682,7 +682,7 @@ defmodule BeamSpy.SourceTest do
           case :beam_lib.chunks(to_charlist(beam_path), [:debug_info]) do
             {:ok, {mod, [{:debug_info, {:debug_info_v1, :erl_abstract_code, _}}]}} ->
               # Gleam compiles to Erlang, so it uses erl_abstract_code
-              assert mod == :"gleam@list"
+              assert mod == :gleam@list
 
             {:ok, {_, [{:debug_info, :no_debug_info}]}} ->
               # Acceptable - compiled without debug info

@@ -10,7 +10,9 @@ defmodule BeamSpy.PagerTest do
       output = "line 1\nline 2\nline 3\n"
 
       # Capture the output by redirecting to a file
-      tmp_output = Path.join(System.tmp_dir!(), "pager_test_#{:erlang.unique_integer([:positive])}.txt")
+      tmp_output =
+        Path.join(System.tmp_dir!(), "pager_test_#{:erlang.unique_integer([:positive])}.txt")
+
       System.put_env("PAGER", "cat > #{tmp_output}")
 
       try do

@@ -261,7 +261,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     @elixir_beam_path :code.which(Enum) |> to_string()
 
     test "includes source lines when source: true" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: true)
 
       # Should include the source line marker (line number followed by │)
       assert output =~ ~r/\d+\s*│/
@@ -270,7 +271,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "still includes instructions with source: true" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: true)
 
       # Should still have bytecode
       assert output =~ "label"
@@ -278,7 +280,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "output without source option has no source lines" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: false)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "reverse/1", source: false)
 
       # Should not have the source line format
       refute output =~ ~r/^\s*\d+\s*│.*def reverse/m
@@ -286,7 +289,9 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     test "source option does not affect JSON format" do
       # JSON format ignores source option (no interleaving)
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :json, function: "reverse/1", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :json, function: "reverse/1", source: true)
+
       {:ok, decoded} = Jason.decode(output)
 
       assert decoded["module"] == "Elixir.Enum"
@@ -298,7 +303,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     @elixir_beam_path :code.which(Enum) |> to_string()
 
     test "shows reconstructed source for Elixir stdlib" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
 
       # Should show line numbers
       assert output =~ ~r/\d+\s*│/
@@ -308,7 +314,8 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     test "shows distant references with function names for inlined code" do
       # reduce/3 is known to inline helper functions
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
 
       # Should have distant reference markers with function names
       # Format: → function_name (line N)
@@ -316,7 +323,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "preserves bytecode instructions with source" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
 
       # Should still have all the bytecode
       assert output =~ "func_info"
@@ -330,7 +338,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     @maps_beam_path :code.which(:maps) |> to_string()
 
     test "shows reconstructed source for Erlang stdlib" do
-      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "map/2", source: true)
+      {:ok, output} =
+        Disasm.run(@erlang_beam_path, format: :text, function: "map/2", source: true)
 
       # Should show line numbers
       assert output =~ ~r/\d+\s*│/
@@ -340,7 +349,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "shows Erlang function signatures in reconstructed source" do
-      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
+      {:ok, output} =
+        Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
 
       # Should show the helper function signature with arguments
       # foldl/3 calls foldl_1/3 which appears in the disasm
@@ -357,7 +367,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "formats Erlang list patterns correctly" do
-      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
+      {:ok, output} =
+        Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
 
       # Should show readable list patterns [H | T] not raw AST
       # The foldl function uses list patterns
@@ -368,7 +379,8 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     test "handles NIF stubs gracefully" do
       # member/2 is a NIF in lists module
-      {:ok, output} = Disasm.run(@erlang_beam_path, format: :text, function: "member/2", source: true)
+      {:ok, output} =
+        Disasm.run(@erlang_beam_path, format: :text, function: "member/2", source: true)
 
       # Should not crash, should show the stub
       assert output =~ "func_info"
@@ -380,14 +392,16 @@ defmodule BeamSpy.Commands.DisasmTest do
     @elixir_beam_path :code.which(Enum) |> to_string()
 
     test "lines near home are shown with full source" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "map/2", source: true)
 
       # The function's own def line should be shown with source
       assert output =~ ~r/\d+\s*│\s*def map/
     end
 
     test "distant lines use arrow notation" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
 
       # Distant references start with →
       if output =~ "→" do
@@ -396,7 +410,8 @@ defmodule BeamSpy.Commands.DisasmTest do
     end
 
     test "distant references include line numbers" do
-      {:ok, output} = Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
+      {:ok, output} =
+        Disasm.run(@elixir_beam_path, format: :text, function: "reduce/3", source: true)
 
       # Every distant reference should have a line number
       distant_refs = Regex.scan(~r/^→.*$/m, output) |> List.flatten()
@@ -491,7 +506,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
         beam_path ->
           assert {:ok, result} = Disasm.extract(beam_path)
-          assert result.module == :"gleam@list"
+          assert result.module == :gleam@list
           assert is_list(result.exports)
           assert is_list(result.functions)
           assert length(result.functions) > 0
@@ -593,7 +608,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
         beam_path ->
           {:ok, result} = Disasm.extract(beam_path)
-          assert result.module == :"gleam@dict"
+          assert result.module == :gleam@dict
           assert length(result.functions) > 0
 
           # dict module should have functions like new, get, insert

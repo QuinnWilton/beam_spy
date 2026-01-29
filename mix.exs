@@ -55,6 +55,9 @@ defmodule BeamSpy.MixProject do
       # Binary distribution
       {:burrito, "~> 1.0"},
 
+      # BEAM compact term format
+      {:ctf, "~> 0.1"},
+
       # Dev/Test dependencies
       {:stream_data, "~> 1.0", only: [:test, :dev]},
       {:mneme, "~> 0.10", only: [:test, :dev]},

@@ -130,19 +130,45 @@ defmodule BeamSpy.Commands.Disasm do
   end
 
   defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, {:list, pairs}]) do
-    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+    [
+      format_arg(fail),
+      format_arg(src),
+      format_arg(dst),
+      format_arg(live),
+      format_map_put_pairs(pairs)
+    ]
   end
 
-  defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, pairs]) when is_list(pairs) do
-    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+  defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, pairs])
+       when is_list(pairs) do
+    [
+      format_arg(fail),
+      format_arg(src),
+      format_arg(dst),
+      format_arg(live),
+      format_map_put_pairs(pairs)
+    ]
   end
 
   defp format_instruction_args(:put_map_exact, [fail, src, dst, live, {:list, pairs}]) do
-    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+    [
+      format_arg(fail),
+      format_arg(src),
+      format_arg(dst),
+      format_arg(live),
+      format_map_put_pairs(pairs)
+    ]
   end
 
-  defp format_instruction_args(:put_map_exact, [fail, src, dst, live, pairs]) when is_list(pairs) do
-    [format_arg(fail), format_arg(src), format_arg(dst), format_arg(live), format_map_put_pairs(pairs)]
+  defp format_instruction_args(:put_map_exact, [fail, src, dst, live, pairs])
+       when is_list(pairs) do
+    [
+      format_arg(fail),
+      format_arg(src),
+      format_arg(dst),
+      format_arg(live),
+      format_map_put_pairs(pairs)
+    ]
   end
 
   defp format_instruction_args(_opcode, args) do
@@ -466,7 +492,17 @@ defmodule BeamSpy.Commands.Disasm do
     |> with_end_lines(source_lines, can_fill_gaps?)
     |> Enum.map_join("\n", fn {start_line, end_line, insts} ->
       parsed = Enum.map(insts, &parse_instruction/1)
-      format_line_group(start_line, end_line, home_line, source_path, source_lines, func_index, parsed, theme)
+
+      format_line_group(
+        start_line,
+        end_line,
+        home_line,
+        source_path,
+        source_lines,
+        func_index,
+        parsed,
+        theme
+      )
     end)
   end
 
@@ -477,9 +513,10 @@ defmodule BeamSpy.Commands.Disasm do
 
   # Only build the function index if there are distant lines that need it.
   defp lazy_func_index(source_lines, grouped, home_line) do
-    has_distant? = Enum.any?(grouped, fn {line, _} ->
-      line != nil and not line_near_home?(line, home_line)
-    end)
+    has_distant? =
+      Enum.any?(grouped, fn {line, _} ->
+        line != nil and not line_near_home?(line, home_line)
+      end)
 
     if has_distant?, do: build_function_index(source_lines), else: nil
   end
@@ -499,12 +536,15 @@ defmodule BeamSpy.Commands.Disasm do
   defp compute_end_line(nil, _, _, _), do: nil
   defp compute_end_line(start, _, _, false), do: start
   defp compute_end_line(start, nil, _, _), do: start
-  defp compute_end_line(start, next, source_lines, true) when next > start and next - start <= @small_gap do
+
+  defp compute_end_line(start, next, source_lines, true)
+       when next > start and next - start <= @small_gap do
     case find_func_boundary_in_range(source_lines, start + 1, next - 1) do
       nil -> next - 1
       boundary -> max(start, boundary - 1)
     end
   end
+
   defp compute_end_line(start, _, _, _), do: start
 
   # Find the first function definition in a line range (stops gap-filling there).
@@ -516,6 +556,7 @@ defmodule BeamSpy.Commands.Disasm do
       end
     end)
   end
+
   defp find_func_boundary_in_range(_, _, _), do: nil
 
   # Build a map of line_number -> function_name for all lines in the source.
@@ -595,7 +636,9 @@ defmodule BeamSpy.Commands.Disasm do
 
     ref_text = if func_name, do: "#{func_name} (line #{line_num})", else: "line #{line_num}"
     styled_ref = Theme.styled_string(ref_text, "ui.dim", theme)
-    linked_ref = if source_path, do: make_hyperlink(styled_ref, source_path, line_num), else: styled_ref
+
+    linked_ref =
+      if source_path, do: make_hyperlink(styled_ref, source_path, line_num), else: styled_ref
 
     arrow = Theme.styled_string("→", "ui.dim", theme)
     header = "#{arrow} #{linked_ref}"
@@ -614,24 +657,25 @@ defmodule BeamSpy.Commands.Disasm do
           text != nil and String.trim(text) != "",
           do: {line, text}
 
-    source_header = case lines_with_text do
-      [] ->
-        # No source text - just show line number
-        "#{format_line_number(start_line, source_path, theme)} #{border}"
+    source_header =
+      case lines_with_text do
+        [] ->
+          # No source text - just show line number
+          "#{format_line_number(start_line, source_path, theme)} #{border}"
 
-      lines ->
-        # Dedent and format each source line
-        min_indent = lines |> Enum.map(&elem(&1, 1)) |> find_min_indent()
+        lines ->
+          # Dedent and format each source line
+          min_indent = lines |> Enum.map(&elem(&1, 1)) |> find_min_indent()
 
-        lines
-        |> Enum.map(fn {line, text} ->
-          dedented = remove_indent(text, min_indent)
-          line_styled = format_line_number(line, source_path, theme)
-          source_styled = Theme.styled_string(dedented, "ui.source", theme)
-          "#{line_styled} #{border} #{source_styled}"
-        end)
-        |> Enum.join("\n")
-    end
+          lines
+          |> Enum.map(fn {line, text} ->
+            dedented = remove_indent(text, min_indent)
+            line_styled = format_line_number(line, source_path, theme)
+            source_styled = Theme.styled_string(dedented, "ui.source", theme)
+            "#{line_styled} #{border} #{source_styled}"
+          end)
+          |> Enum.join("\n")
+      end
 
     join_blocks([source_header, format_bytecode_block(instructions, theme)])
   end
@@ -641,9 +685,10 @@ defmodule BeamSpy.Commands.Disasm do
     border = Theme.styled_string("│", "ui.border", theme)
     padding = "     "
 
-    inst_lines = Enum.map(instructions, fn inst ->
-      "#{padding}#{border}    #{format_instruction_text(inst, theme)}"
-    end)
+    inst_lines =
+      Enum.map(instructions, fn inst ->
+        "#{padding}#{border}    #{format_instruction_text(inst, theme)}"
+      end)
 
     trailing = "#{padding}#{border}"
     Enum.join(inst_lines ++ [trailing], "\n")

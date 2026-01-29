@@ -26,7 +26,9 @@ defmodule BeamSpy.Source do
   @spec load_source(String.t(), keyword()) :: {:ok, map(), source_type()} | {:error, term()}
   def load_source(beam_path, opts \\ []) do
     case Keyword.get(opts, :source_path) do
-      nil -> load_from_beam(beam_path)
+      nil ->
+        load_from_beam(beam_path)
+
       path ->
         case load_from_file(path) do
           {:ok, lines} -> {:ok, lines, {:file, path}}
@@ -84,42 +86,16 @@ defmodule BeamSpy.Source do
   defp decode_line_entries(rest, 0, acc), do: {Enum.reverse(acc), rest}
 
   defp decode_line_entries(binary, n, acc) do
-    {value, rest} = decode_compact_value(binary)
+    # Line entries are encoded using BEAM compact term format.
+    # The tag varies but we only need the numeric value.
+    {term, rest} = CTF.decode(binary)
+    value = extract_compact_value(term)
     decode_line_entries(rest, n - 1, [value | acc])
   end
 
-  # Decode a compact-term-encoded value from the Line chunk.
-  # This uses the same encoding as instruction arguments in the Code chunk.
-  defp decode_compact_value(<<byte, rest::binary>>) do
-    if (byte &&& 0x08) == 0 do
-      # Small value: upper 4 bits contain the value
-      {byte >>> 4, rest}
-    else
-      if (byte &&& 0x10) == 0 do
-        # Medium value: 3 bits from first byte + 8 bits from second
-        <<next, rest2::binary>> = rest
-        value = ((byte &&& 0xE0) >>> 5) <<< 8 ||| next
-        {value, rest2}
-      else
-        # Large value: size encoded in upper bits
-        size_bits = (byte &&& 0xE0) >>> 5
-
-        if size_bits < 7 do
-          byte_count = size_bits + 2
-          <<value_bytes::binary-size(byte_count), rest2::binary>> = rest
-          value = :binary.decode_unsigned(value_bytes, :big)
-          {value, rest2}
-        else
-          # Very large: size itself is encoded recursively
-          {size, rest2} = decode_compact_value(rest)
-          byte_count = size + 9
-          <<value_bytes::binary-size(byte_count), rest3::binary>> = rest2
-          value = :binary.decode_unsigned(value_bytes, :big)
-          {value, rest3}
-        end
-      end
-    end
-  end
+  # Extract the numeric value from a compact term, regardless of tag.
+  defp extract_compact_value({_tag, value}) when is_integer(value), do: value
+  defp extract_compact_value({:tr, inner, _type}), do: extract_compact_value(inner)
 
   @doc """
   Group instructions by their source line numbers.
@@ -379,24 +355,30 @@ defmodule BeamSpy.Source do
   defp erl_pp_form({:cons, _, head, tail}) do
     "[#{erl_pp_form(head)} | #{erl_pp_form(tail)}]"
   end
+
   # Tuple pattern
   defp erl_pp_form({:tuple, _, elements}) do
     "{#{Enum.map_join(elements, ", ", &erl_pp_form/1)}}"
   end
+
   # Map pattern
   defp erl_pp_form({:map, _, pairs}) do
-    pairs_str = Enum.map_join(pairs, ", ", fn
-      {:map_field_exact, _, k, v} -> "#{erl_pp_form(k)} := #{erl_pp_form(v)}"
-      {:map_field_assoc, _, k, v} -> "#{erl_pp_form(k)} => #{erl_pp_form(v)}"
-      other -> inspect(other, limit: 10)
-    end)
+    pairs_str =
+      Enum.map_join(pairs, ", ", fn
+        {:map_field_exact, _, k, v} -> "#{erl_pp_form(k)} := #{erl_pp_form(v)}"
+        {:map_field_assoc, _, k, v} -> "#{erl_pp_form(k)} => #{erl_pp_form(v)}"
+        other -> inspect(other, limit: 10)
+      end)
+
     "\#{#{pairs_str}}"
   end
+
   # Binary pattern
   defp erl_pp_form({:bin, _, _}), do: "<<...>>"
   # Match pattern
   defp erl_pp_form({:match, _, left, right}) do
     "#{erl_pp_form(left)} = #{erl_pp_form(right)}"
   end
+
   defp erl_pp_form(other), do: inspect(other, limit: 20)
 end
