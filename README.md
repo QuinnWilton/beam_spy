@@ -1,5 +1,9 @@
 # BeamSpy
 
+[![CI](https://github.com/QuinnWilton/beam_spy/actions/workflows/test.yml/badge.svg)](https://github.com/QuinnWilton/beam_spy/actions/workflows/test.yml)
+[![Hex.pm](https://img.shields.io/hexpm/v/beam_spy.svg)](https://hex.pm/packages/beam_spy)
+[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/beam_spy)
+
 **objdump, strings, and readelf for the BEAM VM**
 
 BeamSpy is a BEAM file analysis tool that provides commands for inspecting compiled BEAM modules.
