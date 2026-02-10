@@ -75,7 +75,7 @@ defmodule BeamSpy.MixProject do
       {:table_rex, "~> 4.0"},
 
       # Binary distribution
-      {:burrito, "~> 1.0"},
+      {:burrito, "~> 1.0", optional: true},
 
       # BEAM compact term format
       {:ctf, "~> 0.1"},
