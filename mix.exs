@@ -37,7 +37,6 @@ defmodule BeamSpy.MixProject do
       # Hex
       description: "A comprehensive BEAM file analysis tool",
       package: package(),
-      source_url: "https://github.com/quinnwilton/beam_spy",
 
       # Docs
       name: "BeamSpy",
@@ -126,16 +125,14 @@ defmodule BeamSpy.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/quinnwilton/beam_spy"},
-      files: ~w(lib priv mix.exs README.md LICENSE CHANGELOG.md)
+      links: %{"GitHub" => "https://github.com/QuinnWilton/beam_spy"}
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
-      source_ref: "v#{@version}"
+      extras: ["README.md"]
     ]
   end
 
