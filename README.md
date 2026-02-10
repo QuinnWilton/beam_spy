@@ -20,8 +20,20 @@ BeamSpy is a BEAM file analysis tool that provides commands for inspecting compi
 
 ## Installation
 
+Add `beam_spy` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:beam_spy, "~> 0.1.0"}
+  ]
+end
+```
+
+### As a CLI tool
+
 ```bash
-git clone https://github.com/quinnwilton/beam_spy
+git clone https://github.com/QuinnWilton/beam_spy
 cd beam_spy
 mix deps.get && mix escript.build
 ```
