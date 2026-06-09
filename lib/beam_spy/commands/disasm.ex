@@ -8,7 +8,9 @@ defmodule BeamSpy.Commands.Disasm do
 
   alias BeamSpy.BeamFile
   alias BeamSpy.Format
+  alias BeamSpy.Instruction
   alias BeamSpy.Opcodes
+  alias BeamSpy.Render
   alias BeamSpy.Source
   alias BeamSpy.Theme
 
@@ -78,6 +80,7 @@ defmodule BeamSpy.Commands.Disasm do
       arity: arity,
       entry: entry,
       instructions: parsed_instructions,
+      typed_instructions: Enum.map(instructions, &Instruction.from_raw/1),
       raw_instructions: instructions,
       line_mapping: line_mapping
     }
@@ -116,192 +119,7 @@ defmodule BeamSpy.Commands.Disasm do
   defp parse_instruction(instruction) when is_tuple(instruction) do
     [opcode | args] = Tuple.to_list(instruction)
     category = Opcodes.category(opcode)
-    formatted_args = format_instruction_args(opcode, args)
-    {category, to_string(opcode), formatted_args}
-  end
-
-  # Special formatting for specific instructions
-  defp format_instruction_args(:get_map_elements, [fail, src, {:list, pairs}]) do
-    [format_arg(fail), format_arg(src), format_map_get_pairs(pairs)]
-  end
-
-  defp format_instruction_args(:get_map_elements, [fail, src, pairs]) when is_list(pairs) do
-    [format_arg(fail), format_arg(src), format_map_get_pairs(pairs)]
-  end
-
-  defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, {:list, pairs}]) do
-    [
-      format_arg(fail),
-      format_arg(src),
-      format_arg(dst),
-      format_arg(live),
-      format_map_put_pairs(pairs)
-    ]
-  end
-
-  defp format_instruction_args(:put_map_assoc, [fail, src, dst, live, pairs])
-       when is_list(pairs) do
-    [
-      format_arg(fail),
-      format_arg(src),
-      format_arg(dst),
-      format_arg(live),
-      format_map_put_pairs(pairs)
-    ]
-  end
-
-  defp format_instruction_args(:put_map_exact, [fail, src, dst, live, {:list, pairs}]) do
-    [
-      format_arg(fail),
-      format_arg(src),
-      format_arg(dst),
-      format_arg(live),
-      format_map_put_pairs(pairs)
-    ]
-  end
-
-  defp format_instruction_args(:put_map_exact, [fail, src, dst, live, pairs])
-       when is_list(pairs) do
-    [
-      format_arg(fail),
-      format_arg(src),
-      format_arg(dst),
-      format_arg(live),
-      format_map_put_pairs(pairs)
-    ]
-  end
-
-  defp format_instruction_args(_opcode, args) do
-    Enum.map(args, &format_arg/1)
-  end
-
-  # Format get_map_elements pairs: [key, dest, key, dest, ...] -> [key => dest, ...]
-  defp format_map_get_pairs(pairs) do
-    pairs
-    |> Enum.chunk_every(2)
-    |> Enum.map(fn
-      [key, dest] -> "#{format_map_key(key)} => #{format_arg(dest)}"
-      other -> Enum.map_join(other, ", ", &format_arg/1)
-    end)
-    |> then(fn formatted -> "[#{Enum.join(formatted, ", ")}]" end)
-    |> truncate_if_long(80)
-  end
-
-  # Format put_map pairs: [key, val, key, val, ...] -> %{key: val, ...}
-  defp format_map_put_pairs(pairs) do
-    pairs
-    |> Enum.chunk_every(2)
-    |> Enum.map(fn
-      [key, val] -> "#{format_map_key(key)}: #{format_arg(val)}"
-      other -> Enum.map_join(other, ", ", &format_arg/1)
-    end)
-    |> then(fn formatted -> "%{#{Enum.join(formatted, ", ")}}" end)
-    |> truncate_if_long(80)
-  end
-
-  # Format map keys - show atoms without leading colon for cleaner syntax
-  defp format_map_key({:atom, a}), do: to_string(a)
-  defp format_map_key({:literal, a}) when is_atom(a), do: to_string(a)
-  defp format_map_key(other), do: format_arg(other)
-
-  # Format individual argument values
-  defp format_arg({:x, n}), do: "x(#{n})"
-  defp format_arg({:y, n}), do: "y(#{n})"
-  defp format_arg({:fr, n}), do: "fr(#{n})"
-  defp format_arg({:f, n}), do: "f(#{n})"
-  defp format_arg({:atom, a}), do: inspect(a)
-  defp format_arg({:integer, n}), do: to_string(n)
-  defp format_arg({:literal, lit}), do: format_literal(lit)
-  # Typed register - just show the register, ignore JIT type info
-  defp format_arg({:tr, reg, _type}), do: format_arg(reg)
-
-  defp format_arg({:extfunc, m, f, a}) do
-    "#{inspect(m)}:#{inspect(f)}/#{a}"
-  end
-
-  # Format alloc tuples compactly: {alloc, [{words, 2}, {floats, 0}, {funs, 1}]} -> alloc(w:2, fn:1)
-  defp format_arg({:alloc, props}) when is_list(props) do
-    parts =
-      props
-      |> Enum.filter(fn {_key, val} -> val != 0 end)
-      |> Enum.map(fn
-        {:words, n} -> "w:#{n}"
-        {:floats, n} -> "fl:#{n}"
-        {:funs, n} -> "fn:#{n}"
-        {key, val} -> "#{key}:#{val}"
-      end)
-
-    case parts do
-      [] -> "alloc()"
-      _ -> "alloc(#{Enum.join(parts, ", ")})"
-    end
-  end
-
-  # Format string tuples in bs_create_bin - show actual string content
-  defp format_arg({:string, bin}) when is_binary(bin) do
-    if String.printable?(bin) do
-      truncated = if byte_size(bin) > 30, do: String.slice(bin, 0, 27) <> "...", else: bin
-      "{string, #{inspect(truncated)}}"
-    else
-      "{string, <<#{byte_size(bin)} bytes>>}"
-    end
-  end
-
-  # Handle both {:list, items} from beam_disasm and raw Elixir lists
-  defp format_arg({:list, items}), do: format_arg_list(items)
-  defp format_arg(items) when is_list(items), do: format_arg_list(items)
-
-  defp format_arg(nil), do: "[]"
-  defp format_arg(n) when is_integer(n), do: to_string(n)
-  defp format_arg(a) when is_atom(a), do: inspect(a)
-  defp format_arg(bin) when is_binary(bin), do: format_literal(bin)
-  defp format_arg({tag, value}) when is_atom(tag), do: "{#{tag}, #{format_arg(value)}}"
-  defp format_arg(other), do: format_literal(other)
-
-  defp format_arg_list(items) do
-    formatted = Enum.map(items, &format_arg/1)
-    result = "[#{Enum.join(formatted, ", ")}]"
-    truncate_if_long(result, 80)
-  end
-
-  # Format literals with truncation for readability
-  defp format_literal(lit) when is_binary(lit) do
-    if byte_size(lit) > 20 do
-      # Show first few bytes of binary
-      preview = binary_part(lit, 0, min(16, byte_size(lit)))
-      "<<#{inspect_binary_bytes(preview)}...>> (#{byte_size(lit)} bytes)"
-    else
-      inspect(lit)
-    end
-  end
-
-  defp format_literal(lit) when is_list(lit) do
-    result = inspect(lit, limit: 8, printable_limit: 50)
-    truncate_if_long(result, 80)
-  end
-
-  defp format_literal(lit) when is_map(lit) do
-    result = inspect(lit, limit: 4, printable_limit: 50)
-    truncate_if_long(result, 80)
-  end
-
-  defp format_literal(lit) do
-    result = inspect(lit, limit: 8, printable_limit: 50)
-    truncate_if_long(result, 80)
-  end
-
-  defp inspect_binary_bytes(bin) do
-    bin
-    |> :binary.bin_to_list()
-    |> Enum.map_join(", ", &to_string/1)
-  end
-
-  defp truncate_if_long(str, max_len) do
-    if String.length(str) > max_len do
-      String.slice(str, 0, max_len) <> "..."
-    else
-      str
-    end
+    {category, to_string(opcode), Render.raw_args(opcode, args)}
   end
 
   # Filter functions by pattern

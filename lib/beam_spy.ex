@@ -149,6 +149,22 @@ defmodule BeamSpy do
   end
 
   @doc """
+  Read the OTP 25+ `Type` chunk: the operand type table that `{:tr, reg, type}`
+  operands index into.
+
+  ## Examples
+
+      {:ok, table} = BeamSpy.types("Elixir.Enum.beam")
+      {:ok, table} = BeamSpy.types(Enum)
+
+  """
+  def types(input) do
+    with {:ok, path} <- BeamSpy.Resolver.resolve(input) do
+      BeamSpy.BeamType.read_table(path)
+    end
+  end
+
+  @doc """
   Build a call graph from a BEAM file.
 
   ## Examples
