@@ -6,8 +6,6 @@ defmodule BeamSpy.Source do
   from the debug info (Dbgi) chunk when available.
   """
 
-  import Bitwise
-
   @typedoc "Source type: {:file, path} for real source, :reconstructed for debug info"
   @type source_type :: {:file, String.t()} | :reconstructed
 
@@ -38,14 +36,18 @@ defmodule BeamSpy.Source do
   end
 
   @doc """
-  Parse the Line chunk to build a mapping from bytecode line indices
+  Parse the Line chunk to build a mapping from bytecode line references
   to actual source line numbers.
 
-  The bytecode contains `{:line, N}` instructions where N is an index
+  The bytecode contains `{:line, N}` instructions where N is a reference
   into the Line chunk's table, not an actual line number. This function
-  builds the lookup table to resolve those indices.
+  builds the lookup table to resolve those references.
 
-  Returns `{:ok, %{index => line_number}}` or `{:error, reason}`.
+  References are **1-based**: reference 0 is reserved for "no location"
+  (the markers on compiler-generated code) and deliberately has no entry
+  in the returned map, so looking it up yields `nil` rather than a lie.
+
+  Returns `{:ok, %{reference => line_number}}` or `{:error, reason}`.
   """
   @spec parse_line_table(String.t()) :: {:ok, map()} | {:error, term()}
   def parse_line_table(beam_path) do
@@ -65,32 +67,32 @@ defmodule BeamSpy.Source do
          <<_version::32, _flags::32, _instr_count::32, num_lines::32, _num_files::32,
            rest::binary>>
        ) do
-    {entries, _remaining} = decode_line_entries(rest, num_lines, [])
+    entries = decode_line_entries(rest, num_lines, [])
 
-    # Build index -> line_number map (0-based indices, matching bytecode LINE instructions)
-    # Each entry is a location value that may encode file index in high bits
+    # Reference 0 is "no location" and stores no entry, so the first stored
+    # entry is reference 1.
     table =
       entries
-      |> Enum.with_index(0)
-      |> Map.new(fn {location, idx} ->
-        # Extract line number from location (low 24 bits)
-        line = location &&& 0xFFFFFF
-        {idx, line}
-      end)
+      |> Enum.with_index(1)
+      |> Map.new(fn {line, ref} -> {ref, line} end)
 
     {:ok, table}
   rescue
     e -> {:error, {:parse_error, e}}
   end
 
-  defp decode_line_entries(rest, 0, acc), do: {Enum.reverse(acc), rest}
+  # The chunk's item stream holds two kinds of compact terms: integer-tagged
+  # terms are line entries (`num_lines` counts exactly these) and atom-tagged
+  # terms switch the current file index for inlined code *without* consuming
+  # a line slot. Only the line entries are collected; the file index is not
+  # tracked (entries keep their own file's line numbers).
+  defp decode_line_entries(_binary, 0, acc), do: Enum.reverse(acc)
 
   defp decode_line_entries(binary, n, acc) do
-    # Line entries are encoded using BEAM compact term format.
-    # The tag varies but we only need the numeric value.
-    {term, rest} = CTF.decode(binary)
-    value = extract_compact_value(term)
-    decode_line_entries(rest, n - 1, [value | acc])
+    case CTF.decode(binary) do
+      {{:atom, _file_index}, rest} -> decode_line_entries(rest, n, acc)
+      {term, rest} -> decode_line_entries(rest, n - 1, [extract_compact_value(term) | acc])
+    end
   end
 
   # Extract the numeric value from a compact term, regardless of tag.

@@ -362,16 +362,94 @@ defmodule BeamSpy.SourceTest do
       end
     end
 
-    test "line table indices are zero-based" do
+    test "line references are one-based; 0 (no location) has no entry" do
       case Source.parse_line_table(@elixir_beam_path) do
         {:ok, table} ->
-          indices = Map.keys(table)
-          # Should have index 0 or start from a low number
-          min_idx = Enum.min(indices)
-          assert min_idx >= 0 and min_idx < 10
+          refute Map.has_key?(table, 0)
+          assert Enum.min(Map.keys(table)) == 1
 
         {:error, _} ->
           :ok
+      end
+    end
+
+    test "resolves references exactly as the compiler's own asm line markers" do
+      # Ground truth: re-enter the compiler from the module's abstract code
+      # with :to_asm — those forms carry the real source line on each marker,
+      # in the same order as the disassembly's line references. Every pairing
+      # the two share must agree with the parsed table (reference 0 pairs
+      # with no-location markers and must stay absent from the table).
+      source = """
+      defmodule BeamSpyLineOracle do
+        def run(a, b) do
+          x = a + b
+          y = x * 2
+          {x, y}
+        end
+
+        def risky(s) do
+          try do
+            String.to_integer(s)
+          rescue
+            ArgumentError -> :error
+          end
+        end
+      end
+      """
+
+      previous = Code.get_compiler_option(:debug_info)
+      Code.put_compiler_option(:debug_info, true)
+      [{mod, beam} | _] = Code.compile_string(source, "nofile")
+      Code.put_compiler_option(:debug_info, previous)
+
+      on_exit(fn ->
+        :code.purge(mod)
+        :code.delete(mod)
+      end)
+
+      tmp = Path.join(System.tmp_dir!(), "line_oracle_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(tmp)
+      path = Path.join(tmp, "#{mod}.beam")
+      File.write!(path, beam)
+
+      try do
+        {:ok, table} = Source.parse_line_table(path)
+
+        {:beam_file, _, _, _, _, dfuncs} = :beam_disasm.file(String.to_charlist(path))
+        refs = for {:function, _, _, _, instrs} <- dfuncs, {:line, n} <- instrs, do: n
+
+        pairs = refs |> Enum.zip(asm_marker_lines(mod, beam)) |> Enum.uniq()
+        assert {0, nil} in pairs
+
+        for {ref, line} <- pairs do
+          assert Map.get(table, ref) == line,
+                 "reference #{ref}: table says #{inspect(Map.get(table, ref))}, " <>
+                   "compiler says #{inspect(line)}"
+        end
+      after
+        File.rm_rf!(tmp)
+      end
+    end
+  end
+
+  # The real source line of every `{:line, _}` marker (nil for no-location
+  # markers), in stream order, from a `:to_asm` re-entry of the module's
+  # abstract code.
+  defp asm_marker_lines(mod, beam) do
+    {:ok, {^mod, [{:debug_info, {:debug_info_v1, backend, data}}]}} =
+      :beam_lib.chunks(beam, [:debug_info])
+
+    {:ok, forms} = backend.debug_info(:erlang_v1, mod, data, [])
+
+    opts = [:from_abstr, :binary, :return, :no_spawn_compiler_process, :deterministic, :to_asm]
+    {:ok, _mod, {_m, _exports, _attrs, funcs, _last}, _warnings} = :compile.forms(forms, opts)
+
+    for {:function, _name, _arity, _label, instrs} <- funcs, {:line, loc} <- instrs do
+      case loc do
+        n when is_integer(n) -> n
+        [{:location, _file, line} | _] -> line
+        [{:location, line} | _] when is_integer(line) -> line
+        _ -> nil
       end
     end
   end

@@ -427,10 +427,9 @@ defmodule BeamSpy.Commands.DisasmTest do
       {:ok, output} =
         Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
 
-      # Should show the helper function signature with arguments
-      # foldl/3 calls foldl_1/3 which appears in the disasm
-      assert output =~ "foldl_1/3:"
-      assert output =~ ~r/foldl_1\([^)]+\)/
+      # The function's own signature, with arguments, on its own head line.
+      assert output =~ "foldl/3:"
+      assert output =~ ~r/foldl\([^)]+\)/
     end
 
     test "shows distant references with function names for Erlang" do
@@ -443,13 +442,11 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     test "formats Erlang list patterns correctly" do
       {:ok, output} =
-        Disasm.run(@erlang_beam_path, format: :text, function: "foldl/3", source: true)
+        Disasm.run(@erlang_beam_path, format: :text, function: "foldl_1/3", source: true)
 
-      # Should show readable list patterns [H | T] not raw AST
-      # The foldl function uses list patterns
-      if output =~ "foldl_1" do
-        assert output =~ ~r/\[.*\|.*\]/
-      end
+      # Should show readable list patterns [H | T] not raw AST: foldl_1's
+      # clause head destructures the list.
+      assert output =~ ~r/\[.*\|.*\]/
     end
 
     test "handles NIF stubs gracefully" do
