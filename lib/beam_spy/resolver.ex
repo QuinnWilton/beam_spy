@@ -4,9 +4,12 @@ defmodule BeamSpy.Resolver do
 
   Supports both direct file paths and module names, with automatic
   resolution through Mix projects, Erlang code paths, and ERL_LIBS.
+  Raw beam data (see `t:BeamSpy.BeamFile.beam/0`) needs no resolution
+  and passes straight through.
 
   ## Resolution Order
 
+  0. Raw beam data (recognized by its leading bytes) is returned as-is
   1. Direct file path (if input contains "/" or ends with ".beam")
   2. Current directory: `./ModuleName.beam`
   3. Mix project (if in a Mix project):
@@ -33,19 +36,26 @@ defmodule BeamSpy.Resolver do
 
   """
 
+  alias BeamSpy.BeamFile
+
   @type resolve_error :: :not_found
 
   @doc """
-  Resolve an input to a .beam file path.
+  Resolve an input to a .beam file path, or pass raw beam data through.
 
   ## Options
 
     * `:path` - Additional search paths (list or single path)
 
   """
-  @spec resolve(String.t(), keyword()) :: {:ok, String.t()} | {:error, resolve_error()}
+  @spec resolve(BeamFile.beam(), keyword()) ::
+          {:ok, Path.t() | binary()} | {:error, resolve_error()}
   def resolve(input, opts \\ []) do
     cond do
+      # Raw beam data: the readers hand it to :beam_lib directly.
+      BeamFile.beam_data?(input) ->
+        {:ok, input}
+
       # Direct file path
       String.contains?(input, "/") or String.ends_with?(input, ".beam") ->
         resolve_file_path(input)
@@ -59,7 +69,7 @@ defmodule BeamSpy.Resolver do
   @doc """
   Like `resolve/2` but raises on error.
   """
-  @spec resolve!(String.t(), keyword()) :: String.t()
+  @spec resolve!(BeamFile.beam(), keyword()) :: Path.t() | binary()
   def resolve!(input, opts \\ []) do
     case resolve(input, opts) do
       {:ok, path} -> path

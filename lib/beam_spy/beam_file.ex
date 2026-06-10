@@ -13,6 +13,17 @@ defmodule BeamSpy.BeamFile do
           | {:missing_chunk, chunk_id()}
           | {:invalid_chunk, charlist()}
 
+  @typedoc """
+  What every reader accepts: raw beam data, or a path to a beam file.
+
+  Raw beam data is recognized by its leading bytes — the `"FOR1"` IFF header,
+  or the gzip magic for compressed beams (`:beam_lib` gunzips those itself).
+  Any other binary is treated as a file path. Paths may carry any extension
+  (or none): the file is read here and its *contents* handed to `:beam_lib`,
+  which would otherwise rewrite the filename to end in `".beam"`.
+  """
+  @type beam :: Path.t() | binary()
+
   @chunk_descriptions %{
     "AtU8" => "Atom table (UTF-8)",
     "Atom" => "Atom table (Latin-1)",
@@ -35,18 +46,54 @@ defmodule BeamSpy.BeamFile do
   }
 
   @doc """
+  Load beam input into raw beam data for `:beam_lib`/`:beam_disasm`.
+
+  Raw beam data passes through untouched; anything else is treated as a file
+  path and read exactly once. Reading here — rather than handing `:beam_lib`
+  the filename — is what makes arbitrary-extension paths work: `:beam_lib`
+  rewrites any filename it receives to end in `".beam"`, so an extensionless
+  temp file would fail with `:enoent`.
+  """
+  @spec load(beam()) :: {:ok, binary()} | {:error, beam_error()}
+  def load(input) when is_binary(input) do
+    if beam_data?(input) do
+      {:ok, input}
+    else
+      case File.read(input) do
+        {:ok, data} -> {:ok, data}
+        {:error, reason} -> {:error, {:file_error, reason}}
+      end
+    end
+  end
+
+  @doc """
+  Whether a binary is raw beam data rather than a file path.
+
+  Recognizes the `"FOR1"` IFF header and the gzip magic (compressed beams,
+  which `:beam_lib` gunzips itself). A *path* starting with those bytes is
+  pathological enough to be out of scope.
+  """
+  @spec beam_data?(binary()) :: boolean()
+  def beam_data?(<<"FOR1", _::binary>>), do: true
+  def beam_data?(<<0x1F, 0x8B, _::binary>>), do: true
+  def beam_data?(input) when is_binary(input), do: false
+
+  @doc """
   Returns information about the BEAM file including all chunks.
 
   Returns a map with:
   - `:module` - The module name
-  - `:file` - The file path
+  - `:file` - The file path (`nil` when raw beam data was given)
   - `:chunks` - List of chunk info maps
 
   """
-  @spec info(String.t()) :: {:ok, map()} | {:error, beam_error()}
-  def info(path) do
-    with {:ok, chunks} <- read_all_chunks(path),
-         {:ok, module} <- get_module_name(path) do
+  @spec info(beam()) :: {:ok, map()} | {:error, beam_error()}
+  def info(input) do
+    # Load once and stay at the data level: handing loaded *contents* back to
+    # the load-taking readers would re-interpret non-beam junk as a path.
+    with {:ok, beam} <- load(input),
+         {:ok, chunks} <- do_read_all_chunks(beam),
+         {:ok, module} <- do_get_module_name(beam) do
       chunk_info =
         Enum.map(chunks, fn {id, data} ->
           id_str = chunk_id_to_string(id)
@@ -61,7 +108,7 @@ defmodule BeamSpy.BeamFile do
       {:ok,
        %{
          module: module,
-         file: path,
+         file: if(beam_data?(input), do: nil, else: input),
          chunks: chunk_info
        }}
     end
@@ -72,10 +119,16 @@ defmodule BeamSpy.BeamFile do
 
   Returns raw chunk data as `{chunk_id, binary}` tuples.
   """
-  @spec read_all_chunks(String.t()) ::
+  @spec read_all_chunks(beam()) ::
           {:ok, [{atom() | charlist(), binary()}]} | {:error, beam_error()}
-  def read_all_chunks(path) do
-    case :beam_lib.all_chunks(to_charlist(path)) do
+  def read_all_chunks(input) do
+    with {:ok, beam} <- load(input) do
+      do_read_all_chunks(beam)
+    end
+  end
+
+  defp do_read_all_chunks(beam) do
+    case :beam_lib.all_chunks(beam) do
       {:ok, _module, chunks} ->
         {:ok, chunks}
 
@@ -90,12 +143,18 @@ defmodule BeamSpy.BeamFile do
   @doc """
   Reads specific chunks from a BEAM file.
   """
-  @spec read_chunks(String.t(), [chunk_id()]) ::
+  @spec read_chunks(beam(), [chunk_id()]) ::
           {:ok, [{chunk_id(), term()}]} | {:error, beam_error()}
-  def read_chunks(path, chunk_ids) do
+  def read_chunks(input, chunk_ids) do
     chunk_atoms = Enum.map(chunk_ids, &normalize_chunk_id/1)
 
-    case :beam_lib.chunks(to_charlist(path), chunk_atoms) do
+    with {:ok, beam} <- load(input) do
+      do_read_chunks(beam, chunk_atoms)
+    end
+  end
+
+  defp do_read_chunks(beam, chunk_atoms) do
+    case :beam_lib.chunks(beam, chunk_atoms) do
       {:ok, {_module, chunks}} ->
         {:ok, chunks}
 
@@ -120,7 +179,7 @@ defmodule BeamSpy.BeamFile do
 
   Returns a list of atoms (the index is stripped).
   """
-  @spec read_atoms(String.t()) :: {:ok, [atom()]} | {:error, beam_error()}
+  @spec read_atoms(beam()) :: {:ok, [atom()]} | {:error, beam_error()}
   def read_atoms(path) do
     case read_chunks(path, [:atoms]) do
       {:ok, [{:atoms, indexed_atoms}]} ->
@@ -138,7 +197,7 @@ defmodule BeamSpy.BeamFile do
 
   Returns a list of `{function_name, arity, label}` tuples.
   """
-  @spec read_exports(String.t()) ::
+  @spec read_exports(beam()) ::
           {:ok, [{atom(), non_neg_integer(), non_neg_integer()}]} | {:error, beam_error()}
   def read_exports(path) do
     case read_chunks(path, [:exports]) do
@@ -152,7 +211,7 @@ defmodule BeamSpy.BeamFile do
 
   Returns a list of `{module, function_name, arity}` tuples.
   """
-  @spec read_imports(String.t()) ::
+  @spec read_imports(beam()) ::
           {:ok, [{atom(), atom(), non_neg_integer()}]} | {:error, beam_error()}
   def read_imports(path) do
     case read_chunks(path, [:imports]) do
@@ -166,7 +225,7 @@ defmodule BeamSpy.BeamFile do
 
   Returns a keyword list with compilation metadata.
   """
-  @spec read_compile_info(String.t()) :: {:ok, keyword()} | {:error, beam_error()}
+  @spec read_compile_info(beam()) :: {:ok, keyword()} | {:error, beam_error()}
   def read_compile_info(path) do
     case read_chunks(path, [:compile_info]) do
       {:ok, [{:compile_info, info}]} -> {:ok, info}
@@ -177,7 +236,7 @@ defmodule BeamSpy.BeamFile do
   @doc """
   Reads the module attributes from a BEAM file.
   """
-  @spec read_attributes(String.t()) :: {:ok, keyword()} | {:error, beam_error()}
+  @spec read_attributes(beam()) :: {:ok, keyword()} | {:error, beam_error()}
   def read_attributes(path) do
     case read_chunks(path, [:attributes]) do
       {:ok, [{:attributes, attrs}]} -> {:ok, attrs}
@@ -188,9 +247,15 @@ defmodule BeamSpy.BeamFile do
   @doc """
   Gets the module name from a BEAM file.
   """
-  @spec get_module_name(String.t()) :: {:ok, atom()} | {:error, beam_error()}
-  def get_module_name(path) do
-    case :beam_lib.info(to_charlist(path)) do
+  @spec get_module_name(beam()) :: {:ok, atom()} | {:error, beam_error()}
+  def get_module_name(input) do
+    with {:ok, beam} <- load(input) do
+      do_get_module_name(beam)
+    end
+  end
+
+  defp do_get_module_name(beam) do
+    case :beam_lib.info(beam) do
       info when is_list(info) ->
         {:ok, Keyword.fetch!(info, :module)}
 
@@ -205,12 +270,14 @@ defmodule BeamSpy.BeamFile do
   @doc """
   Gets the MD5 hash of a BEAM file.
   """
-  @spec get_md5(String.t()) :: {:ok, binary()} | {:error, beam_error()}
-  def get_md5(path) do
-    case :beam_lib.md5(to_charlist(path)) do
-      {:ok, {_module, md5}} -> {:ok, md5}
-      {:error, :beam_lib, {:not_a_beam_file, _}} -> {:error, :not_a_beam_file}
-      {:error, :beam_lib, {:file_error, _, reason}} -> {:error, {:file_error, reason}}
+  @spec get_md5(beam()) :: {:ok, binary()} | {:error, beam_error()}
+  def get_md5(input) do
+    with {:ok, beam} <- load(input) do
+      case :beam_lib.md5(beam) do
+        {:ok, {_module, md5}} -> {:ok, md5}
+        {:error, :beam_lib, {:not_a_beam_file, _}} -> {:error, :not_a_beam_file}
+        {:error, :beam_lib, {:file_error, _, reason}} -> {:error, {:file_error, reason}}
+      end
     end
   end
 
@@ -225,34 +292,36 @@ defmodule BeamSpy.BeamFile do
   - `:functions` - List of function tuples from beam_disasm
 
   """
-  @spec disassemble(String.t()) :: {:ok, map()} | {:error, beam_error()}
-  def disassemble(path) do
-    case :beam_disasm.file(to_charlist(path)) do
-      {:beam_file, module, exports, attributes, compile_info, functions} ->
-        {:ok,
-         %{
-           module: module,
-           exports: exports,
-           attributes: attributes,
-           compile_info: compile_info,
-           functions: functions
-         }}
+  @spec disassemble(beam()) :: {:ok, map()} | {:error, beam_error()}
+  def disassemble(input) do
+    with {:ok, beam} <- load(input) do
+      case :beam_disasm.file(beam) do
+        {:beam_file, module, exports, attributes, compile_info, functions} ->
+          {:ok,
+           %{
+             module: module,
+             exports: exports,
+             attributes: attributes,
+             compile_info: compile_info,
+             functions: functions
+           }}
 
-      {:error, :beam_lib, {:not_a_beam_file, _}} ->
-        {:error, :not_a_beam_file}
+        {:error, :beam_lib, {:not_a_beam_file, _}} ->
+          {:error, :not_a_beam_file}
 
-      {:error, :beam_lib, {:file_error, _, reason}} ->
-        {:error, {:file_error, reason}}
+        {:error, :beam_lib, {:file_error, _, reason}} ->
+          {:error, {:file_error, reason}}
 
-      {:error, _beam_lib, reason} ->
-        {:error, reason}
+        {:error, _beam_lib, reason} ->
+          {:error, reason}
+      end
     end
   end
 
   @doc """
   Reads a raw chunk by ID, returning the binary data.
   """
-  @spec read_raw_chunk(String.t(), chunk_id()) :: {:ok, binary()} | {:error, beam_error()}
+  @spec read_raw_chunk(beam(), chunk_id()) :: {:ok, binary()} | {:error, beam_error()}
   def read_raw_chunk(path, chunk_id) do
     with {:ok, chunks} <- read_all_chunks(path) do
       target_id = chunk_id_to_charlist(chunk_id)

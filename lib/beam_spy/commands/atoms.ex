@@ -16,7 +16,7 @@ defmodule BeamSpy.Commands.Atoms do
     * `:filter` - Filter atoms by pattern (supports re:, glob:, or substring)
 
   """
-  @spec extract(String.t(), keyword()) :: {:ok, [atom()]} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, [atom()]} | {:error, term()}
   def extract(path, opts \\ []) do
     with {:ok, atoms} <- BeamFile.read_atoms(path) do
       atoms = Filter.maybe_apply(atoms, opts[:filter])

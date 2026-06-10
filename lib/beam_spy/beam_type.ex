@@ -25,29 +25,34 @@ defmodule BeamSpy.BeamType do
           }
   end
 
+  alias BeamSpy.BeamFile
+
   @chunk_id ~c"Type"
 
   @doc """
-  Read and decode a module's Type table from a `.beam` path or binary.
+  Read and decode a module's Type table from a beam path (any extension)
+  or raw beam data — see `t:BeamSpy.BeamFile.beam/0`.
 
   Returns `{:error, :no_type_chunk}` for modules compiled before OTP 25 or
   with `strip_types`, and `{:error, {:unsupported_version, v}}` for table
   versions newer than this OTP release understands.
   """
-  @spec read_table(Path.t() | binary()) :: {:ok, Table.t()} | {:error, term()}
+  @spec read_table(BeamFile.beam()) :: {:ok, Table.t()} | {:error, term()}
   def read_table(input) do
-    case :beam_lib.chunks(beam_input(input), [@chunk_id]) do
-      {:ok, {_module, [{@chunk_id, <<version::32, count::32, table::binary>>}]}} ->
-        decode_table(version, count, table)
+    with {:ok, beam} <- BeamFile.load(input) do
+      case :beam_lib.chunks(beam, [@chunk_id]) do
+        {:ok, {_module, [{@chunk_id, <<version::32, count::32, table::binary>>}]}} ->
+          decode_table(version, count, table)
 
-      {:ok, {_module, [{@chunk_id, _malformed}]}} ->
-        {:error, :malformed_type_chunk}
+        {:ok, {_module, [{@chunk_id, _malformed}]}} ->
+          {:error, :malformed_type_chunk}
 
-      {:error, :beam_lib, {:missing_chunk, _, _}} ->
-        {:error, :no_type_chunk}
+        {:error, :beam_lib, {:missing_chunk, _, _}} ->
+          {:error, :no_type_chunk}
 
-      {:error, :beam_lib, reason} ->
-        {:error, reason}
+        {:error, :beam_lib, reason} ->
+          {:error, reason}
+      end
     end
   end
 
@@ -78,11 +83,5 @@ defmodule BeamSpy.BeamType do
       :done -> Enum.reverse(acc)
       {type, rest} -> decode_entries(rest, [type | acc])
     end
-  end
-
-  # beam_lib takes filenames as charlists and beams as binaries; a printable
-  # Elixir path string would otherwise be parsed as beam *contents*.
-  defp beam_input(input) when is_binary(input) do
-    if File.exists?(input), do: String.to_charlist(input), else: input
   end
 end

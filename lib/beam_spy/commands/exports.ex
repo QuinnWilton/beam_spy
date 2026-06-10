@@ -14,7 +14,8 @@ defmodule BeamSpy.Commands.Exports do
 
   Returns a list of `{name, arity}` tuples.
   """
-  @spec extract(String.t(), keyword()) :: {:ok, [{atom(), non_neg_integer()}]} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) ::
+          {:ok, [{atom(), non_neg_integer()}]} | {:error, term()}
   def extract(path, opts \\ []) do
     with {:ok, exports} <- BeamFile.read_exports(path) do
       # Normalize to {name, arity} format

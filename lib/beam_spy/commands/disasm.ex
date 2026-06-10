@@ -28,7 +28,7 @@ defmodule BeamSpy.Commands.Disasm do
 
   Returns `{:ok, result}` where result contains module info and functions.
   """
-  @spec extract(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, map()} | {:error, term()}
   def extract(path, opts \\ []) do
     case BeamFile.disassemble(path) do
       {:ok, %{module: module, exports: exports, functions: functions}} ->

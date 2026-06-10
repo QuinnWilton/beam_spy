@@ -20,7 +20,7 @@ defmodule BeamSpy.Commands.Info do
   - `:atom_count` - Number of atoms
 
   """
-  @spec extract(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, map()} | {:error, term()}
   def extract(path, _opts \\ []) do
     with {:ok, module} <- BeamFile.get_module_name(path),
          {:ok, md5} <- BeamFile.get_md5(path),
@@ -126,10 +126,15 @@ defmodule BeamSpy.Commands.Info do
     end
   end
 
-  defp get_file_size(path) do
-    case File.stat(path) do
-      {:ok, %{size: size}} -> size
-      _ -> nil
+  # Raw beam data has no file behind it; its own size is the honest answer.
+  defp get_file_size(input) do
+    if BeamFile.beam_data?(input) do
+      byte_size(input)
+    else
+      case File.stat(input) do
+        {:ok, %{size: size}} -> size
+        _ -> nil
+      end
     end
   end
 

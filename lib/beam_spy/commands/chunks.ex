@@ -13,7 +13,7 @@ defmodule BeamSpy.Commands.Chunks do
   - `:total_size` - Total size of all chunks
 
   """
-  @spec extract(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, map()} | {:error, term()}
   def extract(path, _opts \\ []) do
     with {:ok, info} <- BeamFile.info(path) do
       total_size = Enum.sum(Enum.map(info.chunks, & &1.size))

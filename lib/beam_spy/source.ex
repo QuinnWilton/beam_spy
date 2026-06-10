@@ -6,6 +6,8 @@ defmodule BeamSpy.Source do
   from the debug info (Dbgi) chunk when available.
   """
 
+  alias BeamSpy.BeamFile
+
   @typedoc "Source type: {:file, path} for real source, :reconstructed for debug info"
   @type source_type :: {:file, String.t()} | :reconstructed
 
@@ -21,11 +23,12 @@ defmodule BeamSpy.Source do
   2. Fall back to AST reconstruction from Dbgi chunk
   3. Return error if neither available
   """
-  @spec load_source(String.t(), keyword()) :: {:ok, map(), source_type()} | {:error, term()}
-  def load_source(beam_path, opts \\ []) do
+  @spec load_source(BeamFile.beam(), keyword()) ::
+          {:ok, map(), source_type()} | {:error, term()}
+  def load_source(beam, opts \\ []) do
     case Keyword.get(opts, :source_path) do
       nil ->
-        load_from_beam(beam_path)
+        load_from_beam(beam)
 
       path ->
         case load_from_file(path) do
@@ -49,17 +52,19 @@ defmodule BeamSpy.Source do
 
   Returns `{:ok, %{reference => line_number}}` or `{:error, reason}`.
   """
-  @spec parse_line_table(String.t()) :: {:ok, map()} | {:error, term()}
-  def parse_line_table(beam_path) do
-    case :beam_lib.chunks(to_charlist(beam_path), [~c"Line"]) do
-      {:ok, {_, [{~c"Line", data}]}} ->
-        parse_line_chunk(data)
+  @spec parse_line_table(BeamFile.beam()) :: {:ok, map()} | {:error, term()}
+  def parse_line_table(input) do
+    with {:ok, beam} <- BeamFile.load(input) do
+      case :beam_lib.chunks(beam, [~c"Line"]) do
+        {:ok, {_, [{~c"Line", data}]}} ->
+          parse_line_chunk(data)
 
-      {:error, :beam_lib, reason} ->
-        {:error, reason}
+        {:error, :beam_lib, reason} ->
+          {:error, reason}
 
-      _ ->
-        {:error, :no_line_chunk}
+        _ ->
+          {:error, :no_line_chunk}
+      end
     end
   end
 
@@ -173,19 +178,19 @@ defmodule BeamSpy.Source do
   end
 
   # Load source from the beam file's metadata
-  defp load_from_beam(beam_path) do
-    with {:ok, source_path} <- get_source_path(beam_path),
+  defp load_from_beam(beam) do
+    with {:ok, source_path} <- get_source_path(beam),
          {:ok, lines} <- load_from_file(source_path) do
       {:ok, lines, {:file, source_path}}
     else
-      _ -> try_reconstruct_from_dbgi(beam_path)
+      _ -> try_reconstruct_from_dbgi(beam)
     end
   end
 
   # Get original source path from CInf chunk
-  defp get_source_path(beam_path) do
-    case :beam_lib.chunks(to_charlist(beam_path), [:compile_info]) do
-      {:ok, {_, [{:compile_info, info}]}} ->
+  defp get_source_path(beam) do
+    case BeamFile.read_compile_info(beam) do
+      {:ok, info} ->
         case Keyword.get(info, :source) do
           nil -> {:error, :no_source_path}
           path -> {:ok, to_string(path)}
@@ -214,15 +219,15 @@ defmodule BeamSpy.Source do
   end
 
   # Try to reconstruct source from Dbgi chunk
-  defp try_reconstruct_from_dbgi(beam_path) do
-    case :beam_lib.chunks(to_charlist(beam_path), [:debug_info]) do
-      {:ok, {_, [{:debug_info, {:debug_info_v1, backend, data}}]}} ->
+  defp try_reconstruct_from_dbgi(beam) do
+    case BeamFile.read_chunks(beam, [:debug_info]) do
+      {:ok, [{:debug_info, {:debug_info_v1, backend, data}}]} ->
         case reconstruct_source(backend, data) do
           {:ok, lines} -> {:ok, lines, :reconstructed}
           error -> error
         end
 
-      {:ok, {_, [{:debug_info, :no_debug_info}]}} ->
+      {:ok, [{:debug_info, :no_debug_info}]} ->
         {:error, :no_debug_info}
 
       _ ->

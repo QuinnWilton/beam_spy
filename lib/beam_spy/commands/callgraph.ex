@@ -18,7 +18,7 @@ defmodule BeamSpy.Commands.Callgraph do
 
   Returns `{:ok, graph}` where graph contains nodes and edges.
   """
-  @spec extract(String.t(), keyword()) :: {:ok, graph()} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, graph()} | {:error, term()}
   def extract(path, _opts \\ []) do
     case BeamFile.disassemble(path) do
       {:ok, %{module: module, functions: functions}} ->

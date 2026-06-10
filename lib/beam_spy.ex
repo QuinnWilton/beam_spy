@@ -21,14 +21,20 @@ defmodule BeamSpy do
 
   ## Module Resolution
 
-  BeamSpy accepts both file paths and module names:
+  BeamSpy accepts file paths, module names, and raw beam data:
 
-      # Direct file path
+      # Direct file path (any extension — the file's contents are read here,
+      # so extensionless temp files work too)
       BeamSpy.info("./lib/my_app.beam")
+      BeamSpy.info("/tmp/plug-upload-1234")
 
       # Module name (resolved automatically)
       BeamSpy.info("Elixir.Enum")
       BeamSpy.info("lists")
+
+      # Raw beam data, recognized by its leading bytes
+      # (see `t:BeamSpy.BeamFile.beam/0`)
+      BeamSpy.info(File.read!("module.beam"))
 
   """
 

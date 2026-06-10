@@ -44,7 +44,7 @@ defmodule BeamSpy.Commands.Docs do
   before this reader sees it — with `{:unsupported_docs_version, term}` kept
   as a defensive gate should that validation ever loosen.
   """
-  @spec extract(String.t(), keyword()) :: {:ok, docs()} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, docs()} | {:error, term()}
   def extract(path, _opts \\ []) do
     case BeamFile.read_chunks(path, [:documentation]) do
       {:ok, [{:documentation, docs_term}]} -> normalize(docs_term)

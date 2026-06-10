@@ -19,7 +19,7 @@ defmodule BeamSpy.Commands.Literals do
 
   Returns `{:ok, []}` when the module has no `LitT` chunk (an empty pool).
   """
-  @spec extract(String.t(), keyword()) :: {:ok, [entry()]} | {:error, term()}
+  @spec extract(BeamFile.beam(), keyword()) :: {:ok, [entry()]} | {:error, term()}
   def extract(path, _opts \\ []) do
     case BeamFile.read_chunks(path, [:literals]) do
       {:ok, [{:literals, literals}]} -> {:ok, literals}

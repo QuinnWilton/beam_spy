@@ -14,7 +14,7 @@ defmodule BeamSpy.Commands.Imports do
 
   Returns a list of `{module, name, arity}` tuples.
   """
-  @spec extract(String.t(), keyword()) ::
+  @spec extract(BeamFile.beam(), keyword()) ::
           {:ok, [{atom(), atom(), non_neg_integer()}]} | {:error, term()}
   def extract(path, opts \\ []) do
     with {:ok, imports} <- BeamFile.read_imports(path) do
