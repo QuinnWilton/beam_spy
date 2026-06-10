@@ -445,14 +445,23 @@ defmodule BeamSpy.SourceTest do
     {:ok, _mod, {_m, _exports, _attrs, funcs, _last}, _warnings} = :compile.forms(forms, opts)
 
     for {:function, _name, _arity, _label, instrs} <- funcs, {:line, loc} <- instrs do
-      case loc do
-        n when is_integer(n) -> n
-        [{:location, _file, line} | _] -> line
-        [{:location, line} | _] when is_integer(line) -> line
-        _ -> nil
-      end
+      location_line(loc)
     end
   end
+
+  # The location can sit after other annotations in the marker's list
+  # (e.g. a `{:scope, _}` annotation inside try handlers precedes it).
+  defp location_line(loc) when is_integer(loc), do: loc
+
+  defp location_line(annos) when is_list(annos) do
+    Enum.find_value(annos, fn
+      {:location, _file, line} -> line
+      {:location, line} when is_integer(line) -> line
+      _ -> nil
+    end)
+  end
+
+  defp location_line(_), do: nil
 
   describe "group_by_line with line table" do
     test "resolves line indices using line table" do
