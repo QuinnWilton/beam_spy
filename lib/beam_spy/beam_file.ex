@@ -7,7 +7,11 @@ defmodule BeamSpy.BeamFile do
   """
 
   @type chunk_id :: atom() | String.t()
-  @type beam_error :: :not_a_beam_file | {:file_error, term()} | {:missing_chunk, chunk_id()}
+  @type beam_error ::
+          :not_a_beam_file
+          | {:file_error, term()}
+          | {:missing_chunk, chunk_id()}
+          | {:invalid_chunk, charlist()}
 
   @chunk_descriptions %{
     "AtU8" => "Atom table (UTF-8)",
@@ -103,6 +107,11 @@ defmodule BeamSpy.BeamFile do
 
       {:error, :beam_lib, {:missing_chunk, _, chunk}} ->
         {:error, {:missing_chunk, chunk}}
+
+      # A chunk that is present but fails :beam_lib's decoding/validation,
+      # e.g. a Docs chunk whose term is not a recognized docs format.
+      {:error, :beam_lib, {:invalid_chunk, _, chunk}} ->
+        {:error, {:invalid_chunk, chunk}}
     end
   end
 

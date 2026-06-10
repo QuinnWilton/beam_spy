@@ -165,6 +165,40 @@ defmodule BeamSpy do
   end
 
   @doc """
+  Extract the literal pool (the `LitT` chunk) as `{index, term}` pairs.
+
+  A missing chunk means the module pools no literals, so it yields `{:ok, []}`.
+
+  ## Examples
+
+      {:ok, literals} = BeamSpy.literals("Elixir.Enum.beam")
+      {:ok, literals} = BeamSpy.literals("lists")
+
+  """
+  def literals(input) do
+    with {:ok, path} <- BeamSpy.Resolver.resolve(input) do
+      BeamSpy.Commands.Literals.extract(path)
+    end
+  end
+
+  @doc """
+  Read the EEP-48 `Docs` chunk as a normalized map.
+
+  Returns `{:error, :no_docs_chunk}` for modules compiled without docs.
+
+  ## Examples
+
+      {:ok, docs} = BeamSpy.docs("Elixir.Enum.beam")
+      {:ok, docs} = BeamSpy.docs("lists")
+
+  """
+  def docs(input) do
+    with {:ok, path} <- BeamSpy.Resolver.resolve(input) do
+      BeamSpy.Commands.Docs.extract(path)
+    end
+  end
+
+  @doc """
   Build a call graph from a BEAM file.
 
   ## Examples
