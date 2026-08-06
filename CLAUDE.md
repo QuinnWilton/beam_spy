@@ -21,6 +21,7 @@ lib/
 │   ├── format.ex                  # Shared formatting utilities
 │   ├── opcodes.ex                 # Generated from genop.tab
 │   ├── source.ex                  # Source extraction & line correlation
+│   ├── debug_info.ex              # OTP 28 DbgB chunk (beam_debug_info): var→register per line
 │   ├── beam_file.ex               # BEAM file reading helpers
 │   ├── commands/                  # Command implementations
 │   │   ├── atoms.ex               # Atom table extraction

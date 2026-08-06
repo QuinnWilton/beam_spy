@@ -78,7 +78,7 @@ defmodule BeamSpy.MixProject do
       {:burrito, "~> 1.0", optional: true},
 
       # BEAM compact term format
-      {:ctf, "~> 0.1"},
+      {:ctf, path: "../ctf"},
 
       # Dev/Test dependencies
       {:stream_data, "~> 1.0", only: [:test, :dev]},
