@@ -60,8 +60,10 @@ defmodule BeamSpy.DebugInfoTest do
   end
 
   test "a beam without the chunk reports it honestly" do
-    # An ordinary compiled module is not a debug build.
-    beam = :code.which(BeamSpy) |> to_string()
+    # An ordinary compiled module is not a debug build. Read the object
+    # code rather than :code.which/1, which answers :cover_compiled under
+    # `mix test --cover`.
+    {BeamSpy, beam, _path} = :code.get_object_code(BeamSpy)
     assert {:error, :missing_debug_chunk} = DebugInfo.parse(beam)
   end
 end
