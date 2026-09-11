@@ -1,14 +1,14 @@
 defmodule BeamSpy.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1"
   @source_url "https://github.com/QuinnWilton/beam_spy"
 
   def project do
     [
       app: :beam_spy,
       version: @version,
-      elixir: "~> 1.19",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       compilers: compilers(Mix.env()),
       erlc_paths: erlc_paths(Mix.env()),

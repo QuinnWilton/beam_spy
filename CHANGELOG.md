@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.1 — 2026-09-11
+
+### Changed
+
+- Elixir requirement lowered to `~> 1.18`. OTP 28 remains required (the
+  DbgB debug chunk and `:beam_lib`'s literal chunk are OTP 28 features).
+  The test suite still needs Elixir 1.19 under OTP 28: mix_gleam pulls
+  igniter, whose inflex dependency stores compiled regexes in module
+  attributes.
+
 ## 0.2.0 — 2026-09-11
 
 ### Added

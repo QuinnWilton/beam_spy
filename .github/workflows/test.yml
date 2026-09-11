@@ -67,3 +67,26 @@ jobs:
 
       - name: Run tests with coverage
         run: mix test --cover
+
+  # The library supports Elixir 1.18 on OTP 28; the test environment does
+  # not, because mix_gleam pulls igniter, whose inflex dependency stores
+  # compiled regexes in module attributes and only compiles on 1.19 under
+  # OTP 28. So 1.18 gets the library compiled in :prod, warnings as errors.
+  compile-elixir-1-18:
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '28.3'
+          elixir-version: '1.18.4'
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile with warnings as errors
+        run: mix compile --warnings-as-errors
