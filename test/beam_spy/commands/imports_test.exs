@@ -9,7 +9,7 @@ defmodule BeamSpy.Commands.ImportsTest do
     test "extracts imports from beam file" do
       assert {:ok, imports} = Imports.extract(@test_beam_path)
       assert is_list(imports)
-      assert length(imports) > 0
+      assert imports != []
     end
 
     test "imports have correct structure" do
@@ -70,7 +70,7 @@ defmodule BeamSpy.Commands.ImportsTest do
       {:ok, imports} = Imports.extract(@test_beam_path)
 
       assert is_list(imports)
-      assert length(imports) > 0
+      assert imports != []
 
       modules = Enum.map(imports, fn {m, _, _} -> m end) |> Enum.uniq()
       assert :erlang in modules

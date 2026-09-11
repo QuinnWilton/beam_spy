@@ -9,7 +9,7 @@ defmodule BeamSpy.Commands.ExportsTest do
     test "extracts exports from beam file" do
       assert {:ok, exports} = Exports.extract(@test_beam_path)
       assert is_list(exports)
-      assert length(exports) > 0
+      assert exports != []
 
       for {name, arity} <- exports do
         assert is_atom(name)

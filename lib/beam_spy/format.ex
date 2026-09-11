@@ -56,8 +56,7 @@ defmodule BeamSpy.Format do
 
   defp render_plain_table(rows, _headers) do
     rows
-    |> Enum.map(fn row -> Enum.join(row, "\t") end)
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", fn row -> Enum.join(row, "\t") end)
   end
 
   @doc """
@@ -78,11 +77,10 @@ defmodule BeamSpy.Format do
       |> Enum.max(fn -> 0 end)
 
     pairs
-    |> Enum.map(fn {key, value} ->
+    |> Enum.map_join("\n", fn {key, value} ->
       padded_key = String.pad_trailing(to_string(key), max_key_len)
       "#{padded_key}#{separator}#{format_value(value)}"
     end)
-    |> Enum.join("\n")
   end
 
   @doc """
@@ -110,8 +108,7 @@ defmodule BeamSpy.Format do
 
   def format_value(values) when is_list(values) do
     values
-    |> Enum.map(&format_value/1)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", &format_value/1)
   end
 
   def format_value(value), do: inspect(value)
@@ -251,7 +248,7 @@ defmodule BeamSpy.Format do
     |> :binary.bin_to_list()
     |> Enum.chunk_every(bytes_per_line)
     |> Enum.with_index()
-    |> Enum.map(fn {bytes, index} ->
+    |> Enum.map_join("\n", fn {bytes, index} ->
       offset = index * bytes_per_line
       hex_part = format_hex_bytes(bytes, bytes_per_line)
       ascii_part = format_ascii_bytes(bytes)
@@ -259,14 +256,12 @@ defmodule BeamSpy.Format do
       :io_lib.format("~8.16.0B: ~s |~s|", [offset, hex_part, ascii_part])
       |> IO.iodata_to_binary()
     end)
-    |> Enum.join("\n")
   end
 
   defp format_hex_bytes(bytes, bytes_per_line) do
     hex =
       bytes
-      |> Enum.map(fn b -> :io_lib.format("~2.16.0B", [b]) end)
-      |> Enum.join(" ")
+      |> Enum.map_join(" ", fn b -> :io_lib.format("~2.16.0B", [b]) end)
 
     # Pad to full width
     padding_bytes = bytes_per_line - length(bytes)
@@ -276,10 +271,9 @@ defmodule BeamSpy.Format do
 
   defp format_ascii_bytes(bytes) do
     bytes
-    |> Enum.map(fn
+    |> Enum.map_join("", fn
       b when b >= 32 and b < 127 -> <<b>>
       _ -> "."
     end)
-    |> Enum.join()
   end
 end

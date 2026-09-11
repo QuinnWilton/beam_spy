@@ -9,7 +9,7 @@ defmodule BeamSpy.Commands.AtomsTest do
     test "extracts atoms from beam file" do
       assert {:ok, atoms} = Atoms.extract(@test_beam_path)
       assert is_list(atoms)
-      assert length(atoms) > 0
+      assert atoms != []
 
       for atom <- atoms do
         assert is_atom(atom)
@@ -54,7 +54,7 @@ defmodule BeamSpy.Commands.AtomsTest do
     test "outputs one atom per line" do
       {:ok, output} = Atoms.run(@test_beam_path, format: :text)
       lines = String.split(output, "\n", trim: true)
-      assert length(lines) > 0
+      assert lines != []
     end
 
     test "returns error message for invalid file" do

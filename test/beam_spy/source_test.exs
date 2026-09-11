@@ -2,6 +2,7 @@ defmodule BeamSpy.SourceTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
+  alias BeamSpy.Commands.Disasm
   alias BeamSpy.Source
   alias BeamSpy.Test.Helpers
 
@@ -96,13 +97,13 @@ defmodule BeamSpy.SourceTest do
       line_10 = Enum.find(groups, fn {line, _} -> line == 10 end)
       assert line_10 != nil
       {10, insts_10} = line_10
-      assert length(insts_10) >= 1
+      assert insts_10 != []
 
       # Find the line 12 group
       line_12 = Enum.find(groups, fn {line, _} -> line == 12 end)
       assert line_12 != nil
       {12, insts_12} = line_12
-      assert length(insts_12) >= 1
+      assert insts_12 != []
     end
 
     test "handles instructions before any line marker" do
@@ -198,7 +199,7 @@ defmodule BeamSpy.SourceTest do
 
           # Should have module declaration
           module_lines = Enum.filter(lines, fn {_, text} -> text =~ "-module" end)
-          assert length(module_lines) > 0
+          assert module_lines != []
 
         {:error, reason} ->
           # Some Erlang versions might not have debug info
@@ -211,7 +212,7 @@ defmodule BeamSpy.SourceTest do
         {:ok, lines, :reconstructed} ->
           # Should have function definitions in name/arity: format
           func_lines = Enum.filter(lines, fn {_, text} -> text =~ ~r/\w+\/\d+:/ end)
-          assert length(func_lines) > 0
+          assert func_lines != []
 
           # Should include common functions like map, foldl, etc.
           all_text = lines |> Map.values() |> Enum.join("\n")
@@ -576,7 +577,7 @@ defmodule BeamSpy.SourceTest do
     property "grouping stdlib modules produces valid groups" do
       check all(module <- member_of([Enum, List, Map, String, :lists, :maps])) do
         beam_path = Helpers.beam_path(module)
-        {:ok, result} = BeamSpy.Commands.Disasm.extract(beam_path)
+        {:ok, result} = Disasm.extract(beam_path)
 
         # Get instructions from first function
         case result.functions do
@@ -682,12 +683,12 @@ defmodule BeamSpy.SourceTest do
           # Load line table
           case Source.parse_line_table(beam_path) do
             {:ok, line_table} ->
-              {:ok, result} = BeamSpy.Commands.Disasm.extract(beam_path, function: "call/3")
+              {:ok, result} = Disasm.extract(beam_path, function: "call/3")
 
               case result.functions do
                 [func | _] ->
                   groups = Source.group_by_line(func.raw_instructions, line_table)
-                  assert length(groups) > 0
+                  assert groups != []
 
                 [] ->
                   :ok
@@ -709,7 +710,7 @@ defmodule BeamSpy.SourceTest do
         {:ok, lines, :reconstructed} ->
           assert is_map(lines)
 
-          {:ok, result} = BeamSpy.Commands.Disasm.extract(beam_path, function: "lookup/2")
+          {:ok, result} = Disasm.extract(beam_path, function: "lookup/2")
 
           case result.functions do
             [func | _] ->
@@ -752,7 +753,7 @@ defmodule BeamSpy.SourceTest do
 
               # Should have module declaration (Erlang style)
               module_lines = Enum.filter(lines, fn {_, text} -> text =~ "-module" end)
-              assert length(module_lines) > 0
+              assert module_lines != []
 
             {:error, reason} ->
               assert reason in [:no_debug_info, :unknown_debug_format]
@@ -878,7 +879,7 @@ defmodule BeamSpy.SourceTest do
           case Source.load_source(beam_path) do
             {:ok, lines, _source_type} ->
               module_lines = Enum.filter(lines, fn {_, text} -> text =~ "-module" end)
-              assert length(module_lines) > 0
+              assert module_lines != []
               {_, text} = hd(module_lines)
               assert text =~ "test_fixture"
 

@@ -166,10 +166,9 @@ defmodule BeamSpy.Commands.Callgraph do
   defp format_dot(graph) do
     edges =
       graph.edges
-      |> Enum.map(fn {from, to} ->
+      |> Enum.map_join("\n", fn {from, to} ->
         ~s(  "#{escape_dot(from)}" -> "#{escape_dot(to)}";)
       end)
-      |> Enum.join("\n")
 
     # Add nodes with no outgoing edges
     isolated_nodes =
@@ -177,8 +176,7 @@ defmodule BeamSpy.Commands.Callgraph do
       |> Enum.reject(fn node ->
         Enum.any?(graph.edges, fn {from, _} -> from == node end)
       end)
-      |> Enum.map(fn node -> ~s(  "#{escape_dot(node)}";) end)
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", fn node -> ~s(  "#{escape_dot(node)}";) end)
 
     """
     digraph callgraph {
@@ -207,7 +205,7 @@ defmodule BeamSpy.Commands.Callgraph do
     all_callers = graph.nodes
 
     all_callers
-    |> Enum.map(fn caller ->
+    |> Enum.map_join("\n\n", fn caller ->
       styled_caller = Theme.styled_string(caller, "function", theme)
       callees = Map.get(by_caller, caller, [])
 
@@ -226,6 +224,5 @@ defmodule BeamSpy.Commands.Callgraph do
         "#{styled_caller}\n#{calls}"
       end
     end)
-    |> Enum.join("\n\n")
   end
 end

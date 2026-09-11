@@ -60,21 +60,19 @@ defmodule BeamSpy.Commands.Imports do
     imports
     |> Enum.group_by(fn {mod, _, _} -> mod end)
     |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
-    |> Enum.map(fn {mod, funs} ->
+    |> Enum.map_join("\n\n", fn {mod, funs} ->
       header = Theme.styled_string(Format.format_module_name(mod), "module", theme)
 
       funcs =
         funs
-        |> Enum.map(fn {_, name, arity} ->
+        |> Enum.map_join("\n", fn {_, name, arity} ->
           styled_name = Theme.styled_string(Atom.to_string(name), "function", theme)
           styled_arity = Theme.styled_string(Integer.to_string(arity), "arity", theme)
           "  #{styled_name}/#{styled_arity}"
         end)
-        |> Enum.join("\n")
 
       "#{header}\n#{funcs}"
     end)
-    |> Enum.join("\n\n")
   end
 
   defp format_output(imports, :text, false, theme) do

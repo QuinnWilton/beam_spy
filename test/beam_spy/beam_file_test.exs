@@ -12,7 +12,7 @@ defmodule BeamSpy.BeamFileTest do
       assert info.module == :lists
       assert info.file == @test_beam_path
       assert is_list(info.chunks)
-      assert length(info.chunks) > 0
+      assert info.chunks != []
     end
 
     test "each chunk has id, size, and description" do
@@ -47,7 +47,7 @@ defmodule BeamSpy.BeamFileTest do
     test "returns all chunks as {id, binary} tuples" do
       assert {:ok, chunks} = BeamFile.read_all_chunks(@test_beam_path)
       assert is_list(chunks)
-      assert length(chunks) > 0
+      assert chunks != []
 
       for {id, data} <- chunks do
         # IDs can be charlists or atoms depending on :beam_lib version
@@ -94,7 +94,7 @@ defmodule BeamSpy.BeamFileTest do
     test "returns list of atoms" do
       assert {:ok, atoms} = BeamFile.read_atoms(@test_beam_path)
       assert is_list(atoms)
-      assert length(atoms) > 0
+      assert atoms != []
 
       for atom <- atoms do
         assert is_atom(atom)
@@ -118,7 +118,7 @@ defmodule BeamSpy.BeamFileTest do
     test "returns list of export tuples" do
       assert {:ok, exports} = BeamFile.read_exports(@test_beam_path)
       assert is_list(exports)
-      assert length(exports) > 0
+      assert exports != []
 
       for export <- exports do
         # Exports can be {name, arity} or {name, arity, label}
@@ -273,7 +273,7 @@ defmodule BeamSpy.BeamFileTest do
       assert {:ok, result} = BeamFile.disassemble(@test_beam_path)
       assert result.module == :lists
       assert is_list(result.functions)
-      assert length(result.functions) > 0
+      assert result.functions != []
     end
 
     test "each function has name, arity, and instructions" do
@@ -323,7 +323,7 @@ defmodule BeamSpy.BeamFileTest do
     test "can disassemble Elixir module" do
       {:ok, result} = BeamFile.disassemble(@elixir_beam_path)
       assert result.module == Enum
-      assert length(result.functions) > 0
+      assert result.functions != []
     end
   end
 end

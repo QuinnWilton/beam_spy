@@ -8,7 +8,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
   use ExUnit.Case, async: true
 
-  alias BeamSpy.Commands.{Atoms, Exports, Imports, Info, Disasm, Chunks, Callgraph}
+  alias BeamSpy.Commands.{Atoms, Callgraph, Chunks, Disasm, Exports, Imports, Info}
   alias BeamSpy.Test.Helpers
 
   @moduletag :real_world
@@ -28,7 +28,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
         assert {:ok, atoms} = Jason.decode(result)
         assert is_list(atoms)
-        assert length(atoms) > 0
+        assert atoms != []
 
         # Module name should be in atoms
         mod_name = to_string(unquote(mod))
@@ -44,7 +44,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
         assert {:ok, atoms} = Jason.decode(result)
         assert is_list(atoms)
-        assert length(atoms) > 0
+        assert atoms != []
       end
     end
   end
@@ -58,7 +58,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
         assert {:ok, exports} = Jason.decode(result)
         assert is_list(exports)
-        assert length(exports) > 0
+        assert exports != []
 
         # All Elixir modules have __info__/1
         names = Enum.map(exports, & &1["name"])
@@ -74,7 +74,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
 
         assert {:ok, exports} = Jason.decode(result)
         assert is_list(exports)
-        assert length(exports) > 0
+        assert exports != []
 
         # All modules have module_info
         names = Enum.map(exports, & &1["name"])
@@ -121,7 +121,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
         assert {:ok, data} = Jason.decode(result)
         chunks = data["chunks"]
         assert is_list(chunks)
-        assert length(chunks) > 0
+        assert chunks != []
 
         # All BEAM files have these standard chunks
         chunk_ids = Enum.map(chunks, & &1["id"])
@@ -213,7 +213,7 @@ defmodule BeamSpy.Integration.RealWorldTest do
       assert is_map(graph)
       assert Map.has_key?(graph, "nodes")
       assert Map.has_key?(graph, "edges")
-      assert length(graph["nodes"]) > 0
+      assert graph["nodes"] != []
     end
 
     test "DOT output is valid syntax for GenServer" do

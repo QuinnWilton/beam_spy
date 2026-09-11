@@ -31,7 +31,7 @@ defmodule BeamSpy.DebugInfoTest do
 
   test "parse/1 yields frame sizes and variable locations", %{beam: beam} do
     assert {:ok, items} = DebugInfo.parse(beam)
-    assert length(items) > 0
+    assert items != []
 
     # The entry item names parameters; later items carry named variables
     # in registers.

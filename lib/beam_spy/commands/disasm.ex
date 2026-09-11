@@ -216,8 +216,10 @@ defmodule BeamSpy.Commands.Disasm do
 
     functions =
       result.functions
-      |> Enum.map(&format_function_text(&1, source_lines, line_table, source_type, theme))
-      |> Enum.join("\n")
+      |> Enum.map_join(
+        "\n",
+        &format_function_text(&1, source_lines, line_table, source_type, theme)
+      )
 
     header <> "\n" <> functions
   end
@@ -263,8 +265,7 @@ defmodule BeamSpy.Commands.Disasm do
       else
         func.instructions
         |> maybe_filter_line_instructions(source_requested_but_unavailable)
-        |> Enum.map(&format_instruction_text(&1, theme))
-        |> Enum.join("\n")
+        |> Enum.map_join("\n", &format_instruction_text(&1, theme))
       end
 
     header <> instructions
@@ -486,13 +487,12 @@ defmodule BeamSpy.Commands.Disasm do
           min_indent = lines |> Enum.map(&elem(&1, 1)) |> find_min_indent()
 
           lines
-          |> Enum.map(fn {line, text} ->
+          |> Enum.map_join("\n", fn {line, text} ->
             dedented = remove_indent(text, min_indent)
             line_styled = format_line_number(line, source_path, theme)
             source_styled = Theme.styled_string(dedented, "ui.source", theme)
             "#{line_styled} #{border} #{source_styled}"
           end)
-          |> Enum.join("\n")
       end
 
     join_blocks([source_header, format_bytecode_block(instructions, theme)])

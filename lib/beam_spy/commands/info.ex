@@ -154,12 +154,11 @@ defmodule BeamSpy.Commands.Info do
     ]
 
     pairs
-    |> Enum.map(fn {key, value, element} ->
+    |> Enum.map_join("\n", fn {key, value, element} ->
       styled_key = Theme.styled_string(key, "ui.key", theme)
       styled_value = Theme.styled_string(to_string(value), element, theme)
       "#{styled_key}: #{styled_value}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_output(info, :json, _theme) do

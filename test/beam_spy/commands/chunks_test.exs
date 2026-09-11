@@ -11,7 +11,7 @@ defmodule BeamSpy.Commands.ChunksTest do
       assert is_map(data)
       assert Map.has_key?(data, :chunks)
       assert is_list(data.chunks)
-      assert length(data.chunks) > 0
+      assert data.chunks != []
     end
 
     test "chunks have correct structure" do

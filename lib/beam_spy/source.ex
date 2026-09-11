@@ -286,31 +286,29 @@ defmodule BeamSpy.Source do
   end
 
   defp reconstruct_function_head(:def, name, args) do
-    args_str = args |> Enum.map(&try_macro_to_string/1) |> Enum.join(", ")
+    args_str = args |> Enum.map_join(", ", &try_macro_to_string/1)
     "def #{name}(#{args_str})"
   end
 
   defp reconstruct_function_head(:defp, name, args) do
-    args_str = args |> Enum.map(&try_macro_to_string/1) |> Enum.join(", ")
+    args_str = args |> Enum.map_join(", ", &try_macro_to_string/1)
     "defp #{name}(#{args_str})"
   end
 
   defp reconstruct_function_head(:defmacro, name, args) do
-    args_str = args |> Enum.map(&try_macro_to_string/1) |> Enum.join(", ")
+    args_str = args |> Enum.map_join(", ", &try_macro_to_string/1)
     "defmacro #{name}(#{args_str})"
   end
 
   defp reconstruct_function_head(_kind, name, args) do
-    args_str = args |> Enum.map(&try_macro_to_string/1) |> Enum.join(", ")
+    args_str = args |> Enum.map_join(", ", &try_macro_to_string/1)
     "def #{name}(#{args_str})"
   end
 
   defp try_macro_to_string(ast) do
-    try do
-      Macro.to_string(ast)
-    rescue
-      _ -> inspect(ast, limit: 50)
-    end
+    Macro.to_string(ast)
+  rescue
+    _ -> inspect(ast, limit: 50)
   end
 
   # Reconstruct Erlang abstract forms to source-like text

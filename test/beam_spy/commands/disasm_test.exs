@@ -2,6 +2,7 @@ defmodule BeamSpy.Commands.DisasmTest do
   use ExUnit.Case, async: true
 
   alias BeamSpy.Commands.Disasm
+  alias BeamSpy.Test.Helpers
 
   # Use a known Erlang stdlib module for testing
   @test_beam_path :code.which(:lists) |> to_string()
@@ -13,7 +14,7 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert result.module == :lists
       assert is_list(result.exports)
       assert is_list(result.functions)
-      assert length(result.functions) > 0
+      assert result.functions != []
     end
 
     test "functions have correct structure" do
@@ -171,7 +172,7 @@ defmodule BeamSpy.Commands.DisasmTest do
       [func] = result.functions
 
       labels = Enum.filter(func.instructions, fn {_, name, _} -> name == "label" end)
-      assert length(labels) > 0
+      assert labels != []
 
       for {category, "label", [n]} <- labels do
         assert category == :control
@@ -196,7 +197,7 @@ defmodule BeamSpy.Commands.DisasmTest do
         end)
 
       # Maps module should have map instructions
-      assert length(map_instructions) >= 0
+      assert is_list(map_instructions)
     end
 
     test "formats return instruction" do
@@ -204,7 +205,7 @@ defmodule BeamSpy.Commands.DisasmTest do
       [func] = result.functions
 
       returns = Enum.filter(func.instructions, fn {_, name, _} -> name == "return" end)
-      assert length(returns) > 0
+      assert returns != []
 
       for {category, "return", args} <- returns do
         assert category == :return
@@ -237,7 +238,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
       # Should have atom arguments (with colons)
       atom_args = Enum.filter(all_args, fn arg -> String.starts_with?(arg, ":") end)
-      assert length(atom_args) > 0
+      assert atom_args != []
     end
 
     test "formats integer arguments" do
@@ -265,7 +266,7 @@ defmodule BeamSpy.Commands.DisasmTest do
       assert func.name == :reverse
       assert func.arity == 1
       assert is_integer(func.entry)
-      assert length(func.instructions) > 0
+      assert func.instructions != []
     end
 
     @tag :snapshot
@@ -572,7 +573,7 @@ defmodule BeamSpy.Commands.DisasmTest do
   describe "Gleam modules" do
     @tag :gleam
     test "extracts functions from Gleam module" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+      case Helpers.gleam_beam_path("gleam@list") do
         nil ->
           :ok
 
@@ -581,13 +582,13 @@ defmodule BeamSpy.Commands.DisasmTest do
           assert result.module == :gleam@list
           assert is_list(result.exports)
           assert is_list(result.functions)
-          assert length(result.functions) > 0
+          assert result.functions != []
       end
     end
 
     @tag :gleam
     test "Gleam functions have correct structure" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+      case Helpers.gleam_beam_path("gleam@list") do
         nil ->
           :ok
 
@@ -605,7 +606,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "filters Gleam functions by name" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+      case Helpers.gleam_beam_path("gleam@list") do
         nil ->
           :ok
 
@@ -626,7 +627,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "text output for Gleam module" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+      case Helpers.gleam_beam_path("gleam@list") do
         nil ->
           :ok
 
@@ -641,7 +642,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "JSON output for Gleam module" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+      case Helpers.gleam_beam_path("gleam@list") do
         nil ->
           :ok
 
@@ -656,7 +657,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "source interleaving with Gleam module" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@list") do
+      case Helpers.gleam_beam_path("gleam@list") do
         nil ->
           :ok
 
@@ -674,14 +675,14 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "Gleam dict module disassembly" do
-      case BeamSpy.Test.Helpers.gleam_beam_path("gleam@dict") do
+      case Helpers.gleam_beam_path("gleam@dict") do
         nil ->
           :ok
 
         beam_path ->
           {:ok, result} = Disasm.extract(beam_path)
           assert result.module == :gleam@dict
-          assert length(result.functions) > 0
+          assert result.functions != []
 
           # dict module should have functions like new, get, insert
           func_names = Enum.map(result.functions, & &1.name)
@@ -691,7 +692,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "custom Gleam fixture extraction" do
-      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+      case Helpers.gleam_fixture_path("test_fixture") do
         nil ->
           :ok
 
@@ -711,7 +712,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "custom Gleam fixture function arities" do
-      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+      case Helpers.gleam_fixture_path("test_fixture") do
         nil ->
           :ok
 
@@ -730,7 +731,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "custom Gleam fixture text output" do
-      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+      case Helpers.gleam_fixture_path("test_fixture") do
         nil ->
           :ok
 
@@ -746,7 +747,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "custom Gleam fixture source interleaving" do
-      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+      case Helpers.gleam_fixture_path("test_fixture") do
         nil ->
           :ok
 
@@ -761,7 +762,7 @@ defmodule BeamSpy.Commands.DisasmTest do
 
     @tag :gleam
     test "custom Gleam fixture JSON output" do
-      case BeamSpy.Test.Helpers.gleam_fixture_path("test_fixture") do
+      case Helpers.gleam_fixture_path("test_fixture") do
         nil ->
           :ok
 

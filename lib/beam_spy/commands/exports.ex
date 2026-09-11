@@ -59,12 +59,11 @@ defmodule BeamSpy.Commands.Exports do
 
   defp format_output(exports, :text, true, theme) do
     exports
-    |> Enum.map(fn {name, arity} ->
+    |> Enum.map_join("\n", fn {name, arity} ->
       styled_name = Theme.styled_string(Atom.to_string(name), "function", theme)
       styled_arity = Theme.styled_string(Integer.to_string(arity), "arity", theme)
       "#{styled_name}/#{styled_arity}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_output(exports, :text, false, theme) do

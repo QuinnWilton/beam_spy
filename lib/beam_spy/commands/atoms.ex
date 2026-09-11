@@ -49,12 +49,11 @@ defmodule BeamSpy.Commands.Atoms do
 
   defp format_output(atoms, :text, theme) do
     atoms
-    |> Enum.map(fn atom ->
+    |> Enum.map_join("\n", fn atom ->
       str = Atom.to_string(atom)
       element = if special_atom?(atom), do: "atom.special", else: "atom"
       Theme.styled_string(str, element, theme)
     end)
-    |> Enum.join("\n")
   end
 
   defp format_output(atoms, :json, _theme) do

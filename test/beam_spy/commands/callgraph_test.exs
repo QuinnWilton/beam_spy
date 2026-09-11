@@ -12,7 +12,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
       assert {:ok, graph} = Callgraph.extract(@test_beam_path)
       assert is_list(graph.nodes)
       assert is_list(graph.edges)
-      assert length(graph.nodes) > 0
+      assert graph.nodes != []
     end
 
     test "nodes contain module functions" do
@@ -41,7 +41,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
           String.starts_with?(to, "erlang.")
         end)
 
-      assert length(erlang_calls) > 0
+      assert erlang_calls != []
     end
 
     test "returns error for invalid file" do
@@ -59,7 +59,7 @@ defmodule BeamSpy.Commands.CallgraphTest do
           String.starts_with?(to, "erlang.")
         end)
 
-      assert length(erlang_calls) >= 0
+      assert is_list(erlang_calls)
     end
   end
 

@@ -126,7 +126,7 @@ defmodule BeamSpy.ResolverTest do
     test "returns list of paths" do
       paths = Resolver.search_paths()
       assert is_list(paths)
-      assert length(paths) > 0
+      assert paths != []
     end
 
     test "includes current directory" do

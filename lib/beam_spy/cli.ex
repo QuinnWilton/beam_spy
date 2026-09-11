@@ -12,10 +12,10 @@ defmodule BeamSpy.CLI do
   - callgraph: Build function call graph
   """
 
+  alias BeamSpy.Commands.{Atoms, Callgraph, Chunks, Disasm, Exports, Imports, Info}
+  alias BeamSpy.Pager
   alias BeamSpy.Resolver
   alias BeamSpy.Theme
-  alias BeamSpy.Pager
-  alias BeamSpy.Commands.{Atoms, Exports, Imports, Info, Chunks, Disasm, Callgraph}
 
   @doc """
   Main entry point for the CLI (escript entry point).

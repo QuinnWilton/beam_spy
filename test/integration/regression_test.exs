@@ -8,7 +8,7 @@ defmodule BeamSpy.Integration.RegressionTest do
 
   use ExUnit.Case, async: true
 
-  alias BeamSpy.Commands.{Atoms, Exports, Imports, Info, Disasm, Chunks}
+  alias BeamSpy.Commands.{Atoms, Chunks, Disasm, Exports, Imports, Info}
 
   @moduletag :regression
 
