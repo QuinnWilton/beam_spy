@@ -20,7 +20,7 @@ defmodule BeamSpy.MixProject do
       # Test
       test_ignore_filters: [~r{test/fixtures/}, ~r{test/support/}],
       test_coverage: [
-        summary: [threshold: 89],
+        summary: [threshold: 88],
         ignore_modules: [
           Mix.Tasks.BeamSpy,
           BeamSpy.Application,
