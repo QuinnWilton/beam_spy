@@ -24,7 +24,7 @@ defmodule BeamSpy.CLITest do
           assert CLI.run(["--version"]) == 0
         end)
 
-      assert output =~ "0.1.0"
+      assert output =~ Mix.Project.config()[:version]
     end
 
     test "lists themes with --list-themes" do

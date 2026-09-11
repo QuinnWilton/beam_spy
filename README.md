@@ -25,7 +25,7 @@ Add `beam_spy` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:beam_spy, "~> 0.1.0"}
+    {:beam_spy, "~> 0.2.0"}
   ]
 end
 ```
