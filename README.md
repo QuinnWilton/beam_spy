@@ -473,10 +473,6 @@ Theme files define colors for:
 - Opcode categories (call, control, data, etc.)
 - Register types (x, y, fr)
 
-## Development
-
-Built with AI assistance. See [CLAUDE.md](CLAUDE.md) for contribution guidelines.
-
 ## License
 
 MIT

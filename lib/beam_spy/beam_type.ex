@@ -4,11 +4,11 @@ defmodule BeamSpy.BeamType do
   type-annotated registers (`{:tr, reg, type}` operands) index into.
 
   The chunk layout is `<<Version:32, Count:32, Table/binary>>`. Older table
-  versions are upgraded via `:beam_types.convert_ext/2`, which returns
+  versions are upgraded via `:beam_types.convert_ext`, which returns
   `:none` for versions this OTP release cannot read — that is the version
   gate, surfaced as `{:error, {:unsupported_version, v}}` rather than a
-  guess. Entries decode with `:beam_types.decode_ext/1` and render through
-  the compiler's own pretty-printer (`:beam_ssa_pp.format_type/1`), so the
+  guess. Entries decode with `:beam_types.decode_ext` and render through
+  the compiler's own pretty-printer (`:beam_ssa_pp.format_type`), so the
   strings shown are exactly the compiler's vocabulary.
   """
 

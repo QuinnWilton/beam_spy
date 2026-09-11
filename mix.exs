@@ -2,12 +2,13 @@ defmodule BeamSpy.MixProject do
   use Mix.Project
 
   @version "0.2.0"
+  @source_url "https://github.com/QuinnWilton/beam_spy"
 
   def project do
     [
       app: :beam_spy,
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       compilers: compilers(Mix.env()),
       erlc_paths: erlc_paths(Mix.env()),
@@ -37,6 +38,8 @@ defmodule BeamSpy.MixProject do
       # Hex
       description: "A comprehensive BEAM file analysis tool",
       package: package(),
+      source_url: @source_url,
+      homepage_url: @source_url,
 
       # Docs
       name: "BeamSpy",
@@ -83,6 +86,7 @@ defmodule BeamSpy.MixProject do
       # Dev/Test dependencies
       {:stream_data, "~> 1.0", only: [:test, :dev]},
       {:mneme, "~> 0.10", only: [:test, :dev]},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:dialyxir, "~> 1.4", only: :dev, runtime: false},
 
@@ -125,14 +129,19 @@ defmodule BeamSpy.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/QuinnWilton/beam_spy"}
+      links: %{"GitHub" => @source_url},
+      # src/ holds the Gleam test fixture, not library code.
+      files: ~w(lib priv mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      source_ref: "v#{@version}",
+      source_url: @source_url,
+      extras: ["README.md", "CHANGELOG.md", "docs/BEAM_ISA_REFERENCE.md"],
+      groups_for_extras: [Reference: ~r/docs\/.*/]
     ]
   end
 
