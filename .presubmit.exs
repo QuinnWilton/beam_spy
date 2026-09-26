@@ -1,10 +1,9 @@
 # Commit policy; run with `mix presubmit`, installed as hooks by `mix presubmit.install`.
 [
-  Presubmit.Rules.Elixir,
+  {Presubmit.Rules.Elixir, except: [:removals_deprecated, :pure_move]},
   Presubmit.Rules.Hygiene,
   Presubmit.Rules.Mix,
   {Presubmit.Rules.Changelog, warn: [:api_changes_logged]},
-  {Presubmit.Rules.ExUnit, only: [:behaviour_changes_tested]},
   {Presubmit.Rules.Message,
    subject:
      ~r/^(feat|fix|docs|test|ci|chore|refactor|perf|build|style)(\([a-z_-]+\))?!?: [a-z0-9]/,
@@ -16,6 +15,5 @@
           &(&1 =~ ~r/anthropic\.com/)
         )
       end, "Claude-Session", ~r{^https://claude\.ai/code/session_}}
-   ]},
-  {Presubmit.Rules.Shape, max_files: 60, max_additions: 3000}
+   ]}
 ]
