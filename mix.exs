@@ -89,7 +89,7 @@ defmodule BeamSpy.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:dialyxir, "~> 1.4", only: :dev, runtime: false},
-      {:presubmit, "~> 0.1.0", only: [:dev, :test], runtime: false},
+      {:presubmit, "~> 0.2.0", only: [:dev, :test], runtime: false},
 
       # Test fixtures for other BEAM languages
       {:mix_gleam, "~> 0.6", only: [:dev, :test], runtime: false},
