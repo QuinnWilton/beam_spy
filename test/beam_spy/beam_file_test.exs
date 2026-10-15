@@ -289,6 +289,36 @@ defmodule BeamSpy.BeamFileTest do
       end
     end
 
+    test "keeps a module's types when its Type table decodes" do
+      assert {:ok, %{types: :kept}} = BeamFile.disassemble(@test_beam_path)
+    end
+
+    test "disassembles a module whose Type table does not decode, its types as any" do
+      {:ok, kept} = BeamFile.disassemble(@test_beam_path)
+      # An entry naming no type at all: a table no release writes.
+      beam = with_type_table(@test_beam_path, &current_version/0, <<0::16>>)
+
+      assert {:error, :beam_disasm, {:internal, _}} = :beam_disasm.file(beam)
+      assert {:ok, untyped} = BeamFile.disassemble(beam)
+      assert untyped.types == :dropped
+      assert untyped.module == :lists
+      assert length(untyped.functions) == length(kept.functions)
+    end
+
+    # OTP 29.1 converts an OTP 27/28 (version 3) entry for an atom or a
+    # bitstring of unit 1 into a bitstring of unit 0, and its encoder then
+    # refuses it: the module fails to disassemble.
+    test "disassembles a module whose older Type table this release cannot convert" do
+      beam = with_type_table(@test_beam_path, fn -> 3 end, <<64, 3, 0>>)
+
+      if mis_converts?(3, <<64, 3, 0>>) do
+        assert {:ok, %{types: :dropped, module: :lists}} = BeamFile.disassemble(beam)
+        assert {:error, {:unconvertible_version, 3}} = BeamSpy.BeamType.read_table(beam)
+      else
+        assert {:ok, %{types: :kept}} = BeamFile.disassemble(beam)
+      end
+    end
+
     test "returns error for invalid beam file" do
       tmp_path = Path.join(System.tmp_dir!(), "not_a_beam3.beam")
       File.write!(tmp_path, "not a beam file")
@@ -325,5 +355,25 @@ defmodule BeamSpy.BeamFileTest do
       assert result.module == Enum
       assert result.functions != []
     end
+  end
+
+  # The beam at `path` with its Type table replaced by `entry` repeated as
+  # many times as it had entries, under the version `version.()` gives.
+  defp with_type_table(path, version, entry) do
+    {:ok, _module, chunks} = :beam_lib.all_chunks(String.to_charlist(path))
+    {~c"Type", <<_::32, count::32, _::binary>>} = List.keyfind(chunks, ~c"Type", 0)
+    table = <<version.()::32, count::32, :binary.copy(entry, count)::binary>>
+    {:ok, beam} = :beam_lib.build_module(List.keyreplace(chunks, ~c"Type", 0, {~c"Type", table}))
+    beam
+  end
+
+  defp current_version,
+    do: 1..16 |> Enum.filter(&(:beam_types.convert_ext(&1, <<>>) != :none)) |> Enum.max()
+
+  defp mis_converts?(version, entry) do
+    _ = :beam_types.convert_ext(version, entry)
+    false
+  rescue
+    _ -> true
   end
 end

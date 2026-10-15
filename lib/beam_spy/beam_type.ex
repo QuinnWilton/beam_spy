@@ -34,8 +34,10 @@ defmodule BeamSpy.BeamType do
   or raw beam data — see `t:BeamSpy.BeamFile.beam/0`.
 
   Returns `{:error, :no_type_chunk}` for modules compiled before OTP 25 or
-  with `strip_types`, and `{:error, {:unsupported_version, v}}` for table
-  versions newer than this OTP release understands.
+  with `strip_types`, `{:error, {:unsupported_version, v}}` for table
+  versions newer than this OTP release understands, and
+  `{:error, {:unconvertible_version, v}}` for an older table this release
+  fails to convert.
   """
   @spec read_table(BeamFile.beam()) :: {:ok, Table.t()} | {:error, term()}
   def read_table(input) do
@@ -63,9 +65,12 @@ defmodule BeamSpy.BeamType do
   end
 
   defp decode_table(version, count, table) do
-    case :beam_types.convert_ext(version, table) do
+    case convert(version, table) do
       :none ->
         {:error, {:unsupported_version, version}}
+
+      :error ->
+        {:error, {:unconvertible_version, version}}
 
       converted when is_binary(converted) ->
         entries = decode_entries(converted, [])
@@ -76,6 +81,15 @@ defmodule BeamSpy.BeamType do
           {:error, {:count_mismatch, count, length(entries)}}
         end
     end
+  end
+
+  # OTP's conversion of another release's table can raise on entries it
+  # mis-converts (OTP 29.1 on an OTP 27/28 union of an atom and a
+  # bitstring); such a table is unreadable here, not a crash.
+  defp convert(version, table) do
+    :beam_types.convert_ext(version, table)
+  rescue
+    _ in [FunctionClauseError, MatchError, ErlangError] -> :error
   end
 
   defp decode_entries(binary, acc) do

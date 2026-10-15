@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- `BeamSpy.BeamFile.disassemble/1` disassembles a module whose `Type`
+  chunk does not decode, rather than failing on it: OTP 29.1 converts an
+  OTP 27/28 union of an atom and a bitstring into a bitstring of unit 0,
+  which its own encoder then refuses, so `:beam_disasm` failed on every
+  such module. The module's typed operands are disassembled as `any`, and
+  the result says so (`types: :dropped`; `types: :kept` otherwise).
+  `BeamSpy.BeamType.read_table/1` returns
+  `{:error, {:unconvertible_version, v}}` for such a table.
+
 ## 0.2.1 — 2026-09-11
 
 ### Changed

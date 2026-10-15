@@ -290,31 +290,81 @@ defmodule BeamSpy.BeamFile do
   - `:attributes` - Module attributes
   - `:compile_info` - Compilation information
   - `:functions` - List of function tuples from beam_disasm
+  - `:types` - `:kept`, or `:dropped` when the module's `Type` chunk could
+    not be read and its typed operands were disassembled as `any`
 
+  `:beam_disasm` decodes the `Type` chunk, which typed register operands
+  (`{:tr, reg, type}`) index into, and fails on the whole module when
+  that chunk does not decode: a table of another OTP release this one
+  converts wrongly (OTP 29.1 turns an OTP 27/28 union of an atom and a
+  bitstring into a bitstring type of unit 0, which its own encoder then
+  refuses), or a corrupt one. The code still disassembles with a table of
+  the same length whose every entry is `any`: such a module comes back
+  with `types: :dropped`, its instructions whole and its operands'
+  types unknown.
   """
   @spec disassemble(beam()) :: {:ok, map()} | {:error, beam_error()}
   def disassemble(input) do
     with {:ok, beam} <- load(input) do
       case :beam_disasm.file(beam) do
-        {:beam_file, module, exports, attributes, compile_info, functions} ->
-          {:ok,
-           %{
-             module: module,
-             exports: exports,
-             attributes: attributes,
-             compile_info: compile_info,
-             functions: functions
-           }}
+        {:beam_file, _, _, _, _, _} = file ->
+          {:ok, disassembled(file, :kept)}
 
-        {:error, :beam_lib, {:not_a_beam_file, _}} ->
-          {:error, :not_a_beam_file}
+        {:error, :beam_disasm, {:internal, _}} = error ->
+          with {:ok, untyped} <- untyped(beam),
+               {:beam_file, _, _, _, _, _} = file <- :beam_disasm.file(untyped) do
+            {:ok, disassembled(file, :dropped)}
+          else
+            _ -> disasm_error(error)
+          end
 
-        {:error, :beam_lib, {:file_error, _, reason}} ->
-          {:error, {:file_error, reason}}
-
-        {:error, _beam_lib, reason} ->
-          {:error, reason}
+        error ->
+          disasm_error(error)
       end
+    end
+  end
+
+  defp disassembled({:beam_file, module, exports, attributes, compile_info, functions}, types) do
+    %{
+      module: module,
+      exports: exports,
+      attributes: attributes,
+      compile_info: compile_info,
+      functions: functions,
+      types: types
+    }
+  end
+
+  defp disasm_error({:error, :beam_lib, {:not_a_beam_file, _}}), do: {:error, :not_a_beam_file}
+
+  defp disasm_error({:error, :beam_lib, {:file_error, _, reason}}),
+    do: {:error, {:file_error, reason}}
+
+  defp disasm_error({:error, _beam_lib, reason}), do: {:error, reason}
+
+  # `beam` with its Type chunk replaced by one of as many entries, each
+  # `any`, in the format this OTP release writes; `:error` for a module
+  # without a Type chunk, whose failure is elsewhere.
+  defp untyped(beam) do
+    with {:ok, _module, chunks} <- :beam_lib.all_chunks(beam),
+         {~c"Type", <<_version::32, count::32, _table::binary>>} <-
+           List.keyfind(chunks, ~c"Type", 0),
+         {:ok, version} <- current_types_version() do
+      any = :binary.copy(:beam_types.encode_ext(:any), count)
+      table = <<version::32, count::32, any::binary>>
+
+      :beam_lib.build_module(List.keyreplace(chunks, ~c"Type", 0, {~c"Type", table}))
+    else
+      _ -> :error
+    end
+  end
+
+  # The newest Type table version this OTP release reads: the one it
+  # writes, which `:beam_types.convert_ext/2` returns unconverted.
+  defp current_types_version do
+    case Enum.filter(1..16, &(:beam_types.convert_ext(&1, <<>>) != :none)) do
+      [] -> :error
+      versions -> {:ok, Enum.max(versions)}
     end
   end
 
